@@ -72,7 +72,7 @@ function(add_non_compile_test name src)
   set(test "ActsNonCompileTest${name}Closure")
   set(target "${test}_Executable")
   add_executable(${target} ${_processed_source})
-  target_link_libraries(${target} PUBLIC ActsCore ActsTestsCommonHelpers)
+  target_link_libraries(${target} PUBLIC ActsCore ActsPluginJson ActsTestsCommonHelpers)
   add_dependencies(${target} "${name}_generated_source")
 
   # Don't build this target by default
