@@ -23,6 +23,7 @@ macro(add_unittest _name _source)
     ${_target}
     PRIVATE
       ActsCore
+      ActsPluginJson
       ActsTestsCommonHelpers
       Boost::unit_test_framework
       ${unittest_extra_libraries})
@@ -72,7 +73,7 @@ function(add_non_compile_test name src)
   set(test "ActsNonCompileTest${name}Closure")
   set(target "${test}_Executable")
   add_executable(${target} ${_processed_source})
-  target_link_libraries(${target} PUBLIC ActsCore ActsPluginJson ActsTestsCommonHelpers)
+  target_link_libraries(${target} PUBLIC ActsCore ActsTestsCommonHelpers)
   add_dependencies(${target} "${name}_generated_source")
 
   # Don't build this target by default
