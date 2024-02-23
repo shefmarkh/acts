@@ -57,9 +57,13 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
     double testZ = 6288.92578125;
     double testPhi = 3.141592653589793;
 
-    BOOST_CHECK_EQUAL(testRadius,readRadius);
-    BOOST_CHECK_EQUAL(testZ,readZ);
-    BOOST_CHECK_EQUAL(testPhi,readPhi);
+    double floatingPointTolerance = 0.00001;
+
+    //EQUAL checks for exact equality, so not suitable for floats/doubles etc
+    //Instead use CLOSE, which checks for equality within some tolerance
+    BOOST_CHECK_CLOSE(testRadius,readRadius,floatingPointTolerance);
+    BOOST_CHECK_CLOSE(testZ,readZ,floatingPointTolerance);
+    BOOST_CHECK_CLOSE(testPhi,readPhi,floatingPointTolerance);
     
 }
 
