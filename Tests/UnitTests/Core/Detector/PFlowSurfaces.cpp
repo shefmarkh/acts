@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <fstream>
+#include <iostream>
 
 #include "Acts/Geometry/GeometryHierarchyMap.hpp"
 #include "Acts/Geometry/GeometryIdentifier.hpp"
@@ -25,19 +26,40 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
     jsonFile >> json;
     jsonFile.close();
 
-    //verify the json object was filled
-    BOOST_CHECK_NE(json, nullptr);
+    //the json file contains two types of data - "surfaces and "entries"
+    //the surface data is stored in "entries"
+    auto jsonSurfaces = json["entries"];
 
-    nlohmann::json jSurfaces = json;
+    std::vector<SurfaceContainer::InputElement> surfaceElements;
 
-     std::vector<SurfaceContainer::InputElement> surfaceElements;
-
-    for (const auto& jSurface : jSurfaces) {
-        Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jSurface);
-        auto surface = Acts::SurfaceJsonConverter::fromJson(jSurface["value"]);
+    for (const auto& jsonSurface : jsonSurfaces) {
+        Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jsonSurface);        
+        auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
         surfaceElements.emplace_back(geoId, surface);
     }
 
+    BOOST_CHECK_EQUAL(surfaceElements.size(), 1);
+
+    //Our test json file only has one surface in it
+    Acts::GeometryIdentifier geoID = surfaceElements[0].first;
+    auto surface = surfaceElements[0].second;
+
+    //Check we read in the correct geoID from our test json file
+    BOOST_CHECK_EQUAL(geoID.value(), 9160836);
+
+    //now check the dimensions of the cylinder are correct
+    double readRadius = surface->bounds().values()[0];
+    double readZ = surface->bounds().values()[1];
+    double readPhi = surface->bounds().values()[2];
+
+    //these values are cut + pasted from the test json file
+    double testRadius = 1456.66162109375;
+    double testZ = 6288.92578125;
+    double testPhi = 3.141592653589793;
+
+    BOOST_CHECK_EQUAL(testRadius,readRadius);
+    BOOST_CHECK_EQUAL(testZ,readZ);
+    BOOST_CHECK_EQUAL(testPhi,readPhi);
     
 }
 
