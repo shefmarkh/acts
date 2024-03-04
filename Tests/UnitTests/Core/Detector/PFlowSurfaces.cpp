@@ -28,9 +28,8 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
     std::ifstream jsonFile("PFlowSurfaces.json");
     jsonFile >> json;
     jsonFile.close();
-
-    //the json file contains two types of data - "surfaces and "entries"
-    //the surface data is stored in "entries"
+    
+    //the surface data is stored in "entries" in the json file
     auto jsonSurfaces = json["entries"];
 
     std::vector<SurfaceContainer::InputElement> surfaceElements;
