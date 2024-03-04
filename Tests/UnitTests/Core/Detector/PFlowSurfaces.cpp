@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
         auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
         surfaceElements.emplace_back(geoId, surface);
 
-        nlohmann::json jTransform = jsonSurface["translation"];
+        nlohmann::json jTransform = jsonSurface["value"]["transform"];
         Acts::Transform3 sTransform = Acts::Transform3JsonConverter::fromJson(jTransform);
         surfaceTransforms.push_back(sTransform);
     }
@@ -94,14 +94,8 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
     BOOST_CHECK(fullCylinderVolume->volumes().empty());
     BOOST_CHECK_EQUAL(fullCylinderVolume->portals().size(), 3u);
 
-    auto vector3 = fullCylinderVolume->center(tContext);
-    std::cout << "x,y,x are " << vector3.x() << ", " << vector3.y() << " and " << vector3.z() << std::endl;
-
     //Now create a cylinder shifted in Z by our transform coordinates
     Acts::Transform3 surfaceTransform = surfaceTransforms[0];
-    auto translation = surfaceTransform.translation();
-    std::cout << "Values are " << translation[0] << ", " << translation[1] << " and " <<
-    translation[2] << std::endl;
 
     auto transformedCylinderBounds =
       std::make_unique<Acts::CylinderVolumeBounds>(0., readRadius+1.0, (readZ/2)+1.0);
@@ -110,9 +104,16 @@ BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){
       portalGenerator, tContext, "FullTransformedCylinderVolume", surfaceTransform,
       std::move(transformedCylinderBounds), tryAllPortals());
 
+    //these values are cut + pasted from the test json file
+    double testXTransformed = 0.0;
+    double testYTransformed = 0.0;
+    double testZTransformed = 2.39990234375;
+
     auto vector3Transformed = fullTransformedCylinderVolume->center(tContext);
-    std::cout << "x,y,x are " << vector3Transformed.x() << ", " << 
-    vector3Transformed.y() << " and " << vector3Transformed.z() << std::endl;
+
+    BOOST_CHECK_CLOSE(testXTransformed,vector3Transformed.x(),floatingPointTolerance);
+    BOOST_CHECK_CLOSE(testYTransformed,vector3Transformed.y(),floatingPointTolerance);
+    BOOST_CHECK_CLOSE(testZTransformed,vector3Transformed.z(),floatingPointTolerance);
 
 }
 
