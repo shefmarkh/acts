@@ -24,7 +24,9 @@ class ExternalsBuilder : public IExternalStructureBuilder {
   Transform3 m_transform = Transform3::Identity();
   bounds_type m_bounds;
 };
-BOOST_AUTO_TEST_CASE(pflowVolumers){
+
+
+BOOST_AUTO_TEST_CASE(pflowVolumeTest){
   CylinderVolumeBounds cvBounds(10, 100, 200);
   auto cBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(
       Transform3::Identity(), cvBounds);
