@@ -27,4 +27,5 @@ add_unittest(VolumeStructureBuilder VolumeStructureBuilderTests.cpp)
 add_unittest(MultiWireStructureBuilder MultiWireStructureBuilderTests.cpp)
 add_unittest(PFlowSurfaces PFlowSurfaces.cpp)
 add_unittest(PFlowVolumeBuilderTests PFlowVolumeBuilderTests.cpp)
+add_unittest(PFlowATLASCaloBarrelCylinderBuilderTests PFlowATLASCaloBarrelCylinderBuilderTests.cpp)
 
