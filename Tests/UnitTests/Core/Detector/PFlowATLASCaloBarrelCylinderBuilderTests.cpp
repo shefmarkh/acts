@@ -4,9 +4,15 @@
 #include "Acts/Detector/DetectorVolumeBuilder.hpp"
 #include "Acts/Detector/interface/IExternalStructureBuilder.hpp"
 #include "Acts/Geometry/CylinderVolumeBounds.hpp"
+#include "Acts/Geometry/GeometryHierarchyMap.hpp"
+#include "Acts/Plugins/Json/GeometryHierarchyMapJsonConverter.hpp"
+#include "Acts/Plugins/Json/SurfaceJsonConverter.hpp"
 
 using namespace Acts;
 using namespace Acts::Experimental;
+
+using GeometryIdHelper = Acts::GeometryHierarchyMapJsonConverter<bool>;
+using SurfaceContainer = Acts::GeometryHierarchyMap<std::shared_ptr<const Acts::Surface>>;
 
 template <typename bounds_type>
 class ExternalsBuilder : public IExternalStructureBuilder {
@@ -36,12 +42,12 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
 
     double caloRMin = 0.00;//looping over all DDE in preSamplerB in Athena shows the minimal value of r is 1452.46
     double calorRMax = 3632.00;//looping over all DDE in TileBar2, TileGap2 and Tile Ext2 in Athena shows the maximal value of r is 3630.00
-    double halfLengthZ = 5809.00;//Looping over all DDE in barrel in Athena shows the half length between min and maz Z is 5805.56
+    double caloHalfLengthZ = 5809.00;//Looping over all DDE in barrel in Athena shows the half length between min and maz Z is 5805.56
 
-    double L0RMin = 1450.00;//looping over all DDE in preSamplerB in Athena shows the minimal value of r is 1452.46
+    double preSamplerBRMin = 1450.00;//looping over all DDE in preSamplerB in Athena shows the minimal value of r is 1452.46
 
     //create a cylinder inside preSamplerB
-    CylinderVolumeBounds gap0Bounds(caloRMin, L0RMin, halfLengthZ);
+    CylinderVolumeBounds gap0Bounds(caloRMin, preSamplerBRMin, caloHalfLengthZ);
 
     auto gap0CylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gap0Bounds);
 
@@ -54,5 +60,40 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
       gap0Cfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
 
     builders.push_back(gap0VolumeBuilder);
+
+    //PreSamplerB
+    double preSamplerBRMax = 1462.00;//looping over all DDE in preSamplerB in Athena shows the maximal value of r is 1460.87
+    double preSamplerBHalfLengthZ = 3146;//Looping over all DDE in preSamplerB in Athena shows the half length between min and maz Z is 3144.46
+    CylinderVolumeBounds preSamplerBBounds(preSamplerBRMin, preSamplerBRMax, preSamplerBHalfLengthZ);
+
+    auto preSamplerBCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), preSamplerBBounds);
+
+    //now read in surfaces from the json file.
+    nlohmann::json json;
+
+    std::ifstream jsonFile("CylinderSurfaces_PreSamplerB.json");
+    jsonFile >> json;
+    jsonFile.close();
+
+    //the surface data is stored in "entries" in the json file
+    auto jsonSurfaces = json["entries"];
+
+    std::vector<SurfaceContainer::InputElement> surfaceElements;
+    std::vector<Acts::Transform3> surfaceTransforms;
+
+    for (const auto& jsonSurface : jsonSurfaces) {
+        Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jsonSurface);        
+        auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
+        surfaceElements.emplace_back(geoId, surface);
+
+        nlohmann::json jTransform = jsonSurface["value"]["transform"];
+        Acts::Transform3 sTransform = Acts::Transform3JsonConverter::fromJson(jTransform);
+        surfaceTransforms.push_back(sTransform);
+    }
+
+    DetectorVolumeBuilder::Config preSamplerBCfg;
+    preSamplerBCfg.name = "PreSamplerB";
+    preSamplerBCfg.externalsBuilder = preSamplerBCylinderBuilder;
+    preSamplerBCfg.internalsBuilder = nullptr;
 
 }
