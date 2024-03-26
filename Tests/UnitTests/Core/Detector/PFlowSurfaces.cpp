@@ -20,6 +20,8 @@ using GeometryIdHelper = Acts::GeometryHierarchyMapJsonConverter<bool>;
 using SurfaceContainer = Acts::GeometryHierarchyMap<std::shared_ptr<const Acts::Surface>>;
 using SurfaceConverter = Acts::GeometryHierarchyMapJsonConverter<std::shared_ptr<const Acts::Surface>>;
 
+Acts::GeometryContext tContext;
+
 BOOST_AUTO_TEST_SUITE(Detector)
 
 BOOST_AUTO_TEST_CASE(PFlowJsonSurfacesReader){

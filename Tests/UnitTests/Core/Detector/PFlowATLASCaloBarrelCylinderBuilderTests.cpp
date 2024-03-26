@@ -33,6 +33,7 @@ class ExternalsBuilder : public IExternalStructureBuilder {
   bounds_type m_bounds;
 };
 
+GeometryContext tContext;
 
 BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     
@@ -89,6 +90,8 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
         nlohmann::json jTransform = jsonSurface["value"]["transform"];
         Acts::Transform3 sTransform = Acts::Transform3JsonConverter::fromJson(jTransform);
         surfaceTransforms.push_back(sTransform);
+
+        //auto testSurface = Surface::makeShared<Surface>(tContext,*(surface.get()),sTransform);
     }
 
     DetectorVolumeBuilder::Config preSamplerBCfg;

@@ -92,36 +92,29 @@ class SurfaceGeoIdGenerator : public Acts::Experimental::IGeometryIdGenerator {
 BOOST_AUTO_TEST_CASE(pflowVolumeTest){
 
   nlohmann::json json;
-    std::ifstream jsonFile("PFlowSurfaces.json");
-    jsonFile >> json;
-    jsonFile.close();
+  std::ifstream jsonFile("PFlowSurfaces.json");
+  jsonFile >> json;
+  jsonFile.close();
     
-    //the surface data is stored in "entries" in the json file
-    auto jsonSurfaces = json["entries"];
+  //the surface data is stored in "entries" in the json file
+  auto jsonSurfaces = json["entries"];
 
-    std::vector<SurfaceContainer::InputElement> surfaceElements;
-    std::vector<Acts::Transform3> surfaceTransforms;
+  std::vector<SurfaceContainer::InputElement> surfaceElements;
 
-    for (const auto& jsonSurface : jsonSurfaces) {
-        Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jsonSurface);        
-        auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
-        surfaceElements.emplace_back(geoId, surface);
-
-        nlohmann::json jTransform = jsonSurface["value"]["transform"];
-        Acts::Transform3 sTransform = Acts::Transform3JsonConverter::fromJson(jTransform);
-        surfaceTransforms.push_back(sTransform);
-    }
+  for (const auto& jsonSurface : jsonSurfaces) {
+      Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jsonSurface);        
+      auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
+      surfaceElements.emplace_back(geoId, surface);
+  }
 
   auto surface = surfaceElements[0].second;
   double readRadius = surface->bounds().values()[0];
   double readZ = surface->bounds().values()[1];
-  double readPhi = surface->bounds().values()[2];
 
   //make the cylinder slightly larger than our surface in the json file
-  Acts::Transform3 surfaceTransform = surfaceTransforms[0];
   CylinderVolumeBounds cvBounds(0., readRadius+1.0, (readZ/2)+1.0);
   auto cBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(
-      surfaceTransform, cvBounds);
+      surface->transform(tContext), cvBounds);
 
   DetectorVolumeBuilder::Config dvCfg;
   dvCfg.name = "CylinderWithVolume";
