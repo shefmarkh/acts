@@ -3,16 +3,15 @@
 #include "Acts/Detector/CylindricalContainerBuilder.hpp"
 #include "Acts/Detector/DetectorVolumeBuilder.hpp"
 #include "Acts/Detector/interface/IExternalStructureBuilder.hpp"
+#include "Acts/Detector/LayerStructureBuilder.hpp"
 #include "Acts/Geometry/CylinderVolumeBounds.hpp"
 #include "Acts/Geometry/GeometryHierarchyMap.hpp"
 #include "Acts/Plugins/Json/GeometryHierarchyMapJsonConverter.hpp"
 #include "Acts/Plugins/Json/SurfaceJsonConverter.hpp"
+#include "Acts/Surfaces/CylinderSurface.hpp"
 
 using namespace Acts;
 using namespace Acts::Experimental;
-
-using GeometryIdHelper = Acts::GeometryHierarchyMapJsonConverter<bool>;
-using SurfaceContainer = Acts::GeometryHierarchyMap<std::shared_ptr<const Acts::Surface>>;
 
 template <typename bounds_type>
 class ExternalsBuilder : public IExternalStructureBuilder {
@@ -79,24 +78,22 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     //the surface data is stored in "entries" in the json file
     auto jsonSurfaces = json["entries"];
 
-    std::vector<SurfaceContainer::InputElement> surfaceElements;
-    std::vector<Acts::Transform3> surfaceTransforms;
+    std::vector<std::shared_ptr<Acts::Surface> > surfaceVector;
 
     for (const auto& jsonSurface : jsonSurfaces) {
-        Acts::GeometryIdentifier geoId = GeometryIdHelper::decodeIdentifier(jsonSurface);        
-        auto surface = Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]);
-        surfaceElements.emplace_back(geoId, surface);
-
-        nlohmann::json jTransform = jsonSurface["value"]["transform"];
-        Acts::Transform3 sTransform = Acts::Transform3JsonConverter::fromJson(jTransform);
-        surfaceTransforms.push_back(sTransform);
-
-        //auto testSurface = Surface::makeShared<Surface>(tContext,*(surface.get()),sTransform);
+        surfaceVector.push_back(Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]));
     }
+
+    Acts::Experimental::LayerStructureBuilder::Config lsConfig;
+    lsConfig.surfacesProvider = std::make_shared<LayerStructureBuilder::SurfacesHolder>(surfaceVector);
 
     DetectorVolumeBuilder::Config preSamplerBCfg;
     preSamplerBCfg.name = "PreSamplerB";
     preSamplerBCfg.externalsBuilder = preSamplerBCylinderBuilder;
-    preSamplerBCfg.internalsBuilder = nullptr;
+    preSamplerBCfg.internalsBuilder = std::make_shared<LayerStructureBuilder>(Acts::Experimental::LayerStructureBuilder(
+      lsConfig, Acts::getDefaultLogger("PreSamplerBBuilder", Logging::VERBOSE)));
+
+      auto preSamplerB_Builder = std::make_shared<DetectorVolumeBuilder>(
+      preSamplerBCfg, getDefaultLogger("DetectorVolumeBuilder_preSamplerB", Logging::VERBOSE));
 
 }
