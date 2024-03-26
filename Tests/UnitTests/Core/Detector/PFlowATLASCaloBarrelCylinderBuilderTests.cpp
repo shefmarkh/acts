@@ -34,6 +34,58 @@ class ExternalsBuilder : public IExternalStructureBuilder {
 
 GeometryContext tContext;
 
+void addGapVolumeBuilder(const double& rMin, const double& rMax, const double& halfLengthZ, const std::string& gapName,
+std::vector<std::shared_ptr<DetectorVolumeBuilder> >& builders){
+
+  CylinderVolumeBounds gapBounds(rMin, rMax, halfLengthZ);
+
+    auto gapCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gapBounds);
+
+    DetectorVolumeBuilder::Config gapCfg;
+    gapCfg.name = gapName;
+    gapCfg.externalsBuilder = gapCylinderBuilder;
+    gapCfg.internalsBuilder = nullptr;
+
+    auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
+      gapCfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
+
+    builders.push_back(gapVolumeBuilder);
+
+}
+
+void addVolumeBuilder(const std::string& jsonFileName, std::vector<std::shared_ptr<DetectorVolumeBuilder> >& builders, const double& layerRMin, const double& layerRMax, 
+const double& layerHalfLengthZ, const std::string& cylinderName){
+
+  CylinderVolumeBounds cylinderBounds(layerRMin, layerRMax, layerHalfLengthZ);
+  auto externalCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), cylinderBounds);
+
+  nlohmann::json json;
+  std::ifstream jsonFile(jsonFileName);
+  jsonFile >> json;
+  jsonFile.close();
+
+  //the surface data is stored in "entries" in the json file
+  auto jsonSurfaces = json["entries"];
+
+  std::vector<std::shared_ptr<Acts::Surface> > surfaceVector;
+
+  for (const auto& jsonSurface : jsonSurfaces) surfaceVector.push_back(Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]));
+
+  Acts::Experimental::LayerStructureBuilder::Config lsConfig;
+  lsConfig.surfacesProvider = std::make_shared<LayerStructureBuilder::SurfacesHolder>(surfaceVector);
+
+  DetectorVolumeBuilder::Config volumeCfg;
+  volumeCfg.name = cylinderName;
+  volumeCfg.externalsBuilder = externalCylinderBuilder;
+  volumeCfg.internalsBuilder = std::make_shared<LayerStructureBuilder>(Acts::Experimental::LayerStructureBuilder(
+  lsConfig, Acts::getDefaultLogger(cylinderName, Logging::VERBOSE)));
+
+  auto volumeBuilder = std::make_shared<DetectorVolumeBuilder>(volumeCfg, getDefaultLogger(cylinderName, Logging::VERBOSE));
+
+  builders.push_back(volumeBuilder);
+
+}
+
 BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     
     CylindricalContainerBuilder::Config ccConfig;
@@ -47,53 +99,11 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     double preSamplerBRMin = 1450.00;//looping over all DDE in preSamplerB in Athena shows the minimal value of r is 1452.46
 
     //create a cylinder inside preSamplerB
-    CylinderVolumeBounds gap0Bounds(caloRMin, preSamplerBRMin, caloHalfLengthZ);
-
-    auto gap0CylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gap0Bounds);
-
-    DetectorVolumeBuilder::Config gap0Cfg;
-    gap0Cfg.name = "Gap0";
-    gap0Cfg.externalsBuilder = gap0CylinderBuilder;
-    gap0Cfg.internalsBuilder = nullptr;
-
-    auto gap0VolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
-      gap0Cfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
-
-    builders.push_back(gap0VolumeBuilder);
+    addGapVolumeBuilder(caloRMin, preSamplerBRMin, caloHalfLengthZ,"Gap0", builders);
 
     //PreSamplerB
     double preSamplerBRMax = 1462.00;//looping over all DDE in preSamplerB in Athena shows the maximal value of r is 1460.87
     double preSamplerBHalfLengthZ = 3146;//Looping over all DDE in preSamplerB in Athena shows the half length between min and maz Z is 3144.46
-    CylinderVolumeBounds preSamplerBBounds(preSamplerBRMin, preSamplerBRMax, preSamplerBHalfLengthZ);
-
-    auto preSamplerBCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), preSamplerBBounds);
-
-    //now read in surfaces from the json file.
-    nlohmann::json json;
-
-    std::ifstream jsonFile("CylinderSurfaces_PreSamplerB.json");
-    jsonFile >> json;
-    jsonFile.close();
-
-    //the surface data is stored in "entries" in the json file
-    auto jsonSurfaces = json["entries"];
-
-    std::vector<std::shared_ptr<Acts::Surface> > surfaceVector;
-
-    for (const auto& jsonSurface : jsonSurfaces) {
-        surfaceVector.push_back(Acts::SurfaceJsonConverter::fromJson(jsonSurface["value"]));
-    }
-
-    Acts::Experimental::LayerStructureBuilder::Config lsConfig;
-    lsConfig.surfacesProvider = std::make_shared<LayerStructureBuilder::SurfacesHolder>(surfaceVector);
-
-    DetectorVolumeBuilder::Config preSamplerBCfg;
-    preSamplerBCfg.name = "PreSamplerB";
-    preSamplerBCfg.externalsBuilder = preSamplerBCylinderBuilder;
-    preSamplerBCfg.internalsBuilder = std::make_shared<LayerStructureBuilder>(Acts::Experimental::LayerStructureBuilder(
-      lsConfig, Acts::getDefaultLogger("PreSamplerBBuilder", Logging::VERBOSE)));
-
-      auto preSamplerB_Builder = std::make_shared<DetectorVolumeBuilder>(
-      preSamplerBCfg, getDefaultLogger("DetectorVolumeBuilder_preSamplerB", Logging::VERBOSE));
+    addVolumeBuilder("CylinderSurfaces_PreSamplerB.json",builders,preSamplerBRMin, preSamplerBRMax, preSamplerBHalfLengthZ,"preSamplerB");
 
 }
