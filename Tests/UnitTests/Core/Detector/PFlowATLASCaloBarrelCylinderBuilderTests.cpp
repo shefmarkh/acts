@@ -39,17 +39,17 @@ std::vector<std::shared_ptr<DetectorVolumeBuilder> >& builders){
 
   CylinderVolumeBounds gapBounds(rMin, rMax, halfLengthZ);
 
-    auto gapCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gapBounds);
+  auto gapCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gapBounds);
 
-    DetectorVolumeBuilder::Config gapCfg;
-    gapCfg.name = gapName;
-    gapCfg.externalsBuilder = gapCylinderBuilder;
-    gapCfg.internalsBuilder = nullptr;
+  DetectorVolumeBuilder::Config gapCfg;
+  gapCfg.name = gapName;
+  gapCfg.externalsBuilder = gapCylinderBuilder;
+  gapCfg.internalsBuilder = nullptr;
 
-    auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
-      gapCfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
+  auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
+    gapCfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
 
-    builders.push_back(gapVolumeBuilder);
+  builders.push_back(gapVolumeBuilder);
 
 }
 
