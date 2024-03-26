@@ -106,4 +106,21 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     double preSamplerBHalfLengthZ = 3146;//Looping over all DDE in preSamplerB in Athena shows the half length between min and maz Z is 3144.46
     addVolumeBuilder("CylinderSurfaces_PreSamplerB.json",builders,preSamplerBRMin, preSamplerBRMax, preSamplerBHalfLengthZ,"preSamplerB");
 
+    //gap between preSamplerB and EMB1. According to CaloDetDescrElements in Athena:
+    //PreSamplerB: MinR and maxR in PreSamplerB are 1452.46 1460.87
+    //EMB1: MinR and maxR in EMB1 are 1512.42 1547.71
+    //EMB1: Half length in Z for EMB1 is 3097.51
+    addGapVolumeBuilder(1462,1510,caloHalfLengthZ, "Gap1",builders);
+
+    //EMB1 cylinder
+    addVolumeBuilder("CylinderSurfaces_EMB1.json",builders,1510,1549,3099,"EMB1");
+
+    //Gap between EMB1 and EMB2.  According to CaloDetDescrElements in Athena:
+    //EMB2: MinR and maxR in EMB2 are 1656.85 1762.55
+    //EMB2: Half length in Z for EMB2 is 3439.76
+    addGapVolumeBuilder(1549,1654,caloHalfLengthZ,"Gap2",builders);
+
+    //EMB2 cylinder
+    addVolumeBuilder("CylinderSurfaces_EMB2.json",builders,1654,1764,3441,"EMB2");
+
 }
