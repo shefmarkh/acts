@@ -123,6 +123,39 @@ BOOST_AUTO_TEST_CASE(ATLASCaloBarrelTests){
     //EMB2 cylinder
     addVolumeBuilder("CylinderSurfaces_EMB2.json",ccConfig.builders,1654,1764,3441,"EMB2");
 
+    //Gap betweem EMB2 and EMB3.  According to CaloDetDescrElements in Athena:
+    //EMB3: MinR and maxR in EMB3 are 1870.24 1949.76
+    //EMB3: Half length in Z for EMB3 is 3277.42
+
+    addGapVolumeBuilder(1654,1868,caloHalfLengthZ,"Gap2",ccConfig.builders);
+
+    //EMB3
+    addVolumeBuilder("CylinderSurfaces_EMB3.json",ccConfig.builders,1868,1951,3279,"EMB3");
+
+    //Gap between EMB3 and TileBar0.  According to CaloDetDescrElements in Athena:
+    //TileBar0: MinR and maxR in TileBar0 are 2450 2450
+    //TileBar0: Half length in Z for TileBar0 is 2656.48
+    addGapVolumeBuilder(1951,2448,caloHalfLengthZ,"Gap3",ccConfig.builders);
+
+    //TileBar0
+    addVolumeBuilder("CylinderSurfaces_TileBar0.json",ccConfig.builders,2448,2452,2658,"TileBar0");
+
+    //Gap between TileBar0 and TileBar1.  According to CaloDetDescrElements in Athena:
+    //TileBar1: MinR and maxR in TileBar1 are 2795 3020
+    //TileBar1: Half length in Z for TileBar1 is 2642.79
+    addGapVolumeBuilder(2452,2793,caloHalfLengthZ,"Gap4",ccConfig.builders);
+
+    //TileBar1
+    addVolumeBuilder("CylinderSurfaces_TileBar1.json",ccConfig.builders,2793,3022,2644,"TileBar1");
+
+    //Gap between TileBar1 and TileBar2.  According to CaloDetDescrElements in Athena:
+    //TileBar2: MinR and maxR in TileBar2 are 3630 3630
+    //TileBar2: Half length in Z for TileBar2 is 2346.1
+    addGapVolumeBuilder(3022,3628,caloHalfLengthZ,"Gap5",ccConfig.builders);
+
+    //TileBar2
+    addVolumeBuilder("CylinderSurfaces_TileBar2.json",ccConfig.builders,3628,3632,2348,"TileBar2");
+
     auto barrelCylinders = std::make_shared<CylindricalContainerBuilder>(
       ccConfig, getDefaultLogger("ATLASCaloCylindricalContainerBuilder", Logging::VERBOSE));
 
