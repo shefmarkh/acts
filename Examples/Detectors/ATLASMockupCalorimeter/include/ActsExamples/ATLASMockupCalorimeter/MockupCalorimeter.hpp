@@ -16,6 +16,8 @@
 using namespace Acts;
 using namespace Acts::Experimental;
 
+GeometryContext tContext;
+
 template <typename bounds_type>
 class ExternalsBuilder : public IExternalStructureBuilder {
  public:
@@ -41,3 +43,5 @@ std::vector<std::shared_ptr<const IDetectorComponentBuilder> >& builders);
 
 void addVolumeBuilder(const std::string& jsonFileName, std::vector<std::shared_ptr<const IDetectorComponentBuilder> >& builders, const double& layerRMin, const double& layerRMax, 
 const double& layerHalfLengthZ, const std::string& cylinderName);
+
+std::shared_ptr<const Detector> constructCaloMockup();

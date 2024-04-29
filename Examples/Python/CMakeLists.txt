@@ -38,6 +38,7 @@ set_target_properties(ActsPythonBindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${_
 target_link_libraries(ActsPythonBindings PUBLIC
   ActsCore
   ActsPythonUtilities
+  ActsExamplesATLASMockupCalorimeterDetector
   ActsExamplesFramework
   ActsExamplesGeometry
   ActsExamplesDetectorGeneric
