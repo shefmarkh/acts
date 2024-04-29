@@ -11,6 +11,7 @@
 #include "Acts/Plugins/Python/Utilities.hpp"
 #include "Acts/Utilities/BinningType.hpp"
 #include "Acts/Utilities/Logger.hpp"
+#include "ActsExamples/ATLASMockupCalorimeter/MockupCalorimeter.hpp"
 #include "ActsExamples/ContextualDetector/AlignedDetector.hpp"
 #include "ActsExamples/Framework/IContextDecorator.hpp"
 #include "ActsExamples/GenericDetector/GenericDetector.hpp"
@@ -63,6 +64,8 @@ void addDetector(Context& ctx) {
         .def_readwrite("volumeLogLevel", &Config::volumeLogLevel)
         .def_readwrite("buildProto", &Config::buildProto);
   }
+
+  { mex.def("buildCaloMockup", &constructCaloMockup);}
 
   {
     using TelescopeDetector = Telescope::TelescopeDetector;
@@ -223,5 +226,6 @@ void addDetector(Context& ctx) {
     patchKwargsConstructor(c);
   }
 }
+
 
 }  // namespace Acts::Python
