@@ -20,7 +20,7 @@ std::vector<std::shared_ptr<const IDetectorComponentBuilder> >& builders){
   gapCfg.geoIdGenerator = geoIdGenerator;
 
   auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
-    gapCfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
+    gapCfg, getDefaultLogger(gapName, Logging::VERBOSE));
 
   builders.push_back(gapVolumeBuilder);
 
