@@ -11,6 +11,7 @@
 #include "Acts/Detector/DetectorVolumeBuilder.hpp"
 #include "Acts/Detector/interface/IDetectorComponentBuilder.hpp"
 #include "Acts/Detector/interface/IExternalStructureBuilder.hpp"
+#include "Acts/Detector/interface/IGeometryIdGenerator.hpp"
 #include "Acts/Geometry/CylinderVolumeBounds.hpp"
 
 using namespace Acts;
@@ -35,6 +36,32 @@ class ExternalsBuilder : public IExternalStructureBuilder {
  private:
   Transform3 m_transform = Transform3::Identity();
   bounds_type m_bounds;
+};
+
+class SurfaceGeoIdGenerator : public Acts::Experimental::IGeometryIdGenerator {
+ public:
+  Acts::Experimental::IGeometryIdGenerator::GeoIdCache generateCache()
+      const final {
+    return std::any();
+  }
+
+  void assignGeometryId(
+      Acts::Experimental::IGeometryIdGenerator::GeoIdCache& /*cache*/,
+      Acts::Experimental::DetectorVolume& dVolume) const final {
+    for (auto [is, s] : Acts::enumerate(dVolume.surfacePtrs())) {
+      Acts::GeometryIdentifier geoID;
+      geoID.setPassive(is + 1);
+      s->assignGeometryId(geoID);
+    }
+  }
+
+  void assignGeometryId(
+      Acts::Experimental::IGeometryIdGenerator::GeoIdCache& /*cache*/,
+      Acts::Experimental::Portal& /*portal*/) const final {}
+
+  void assignGeometryId(
+      Acts::Experimental::IGeometryIdGenerator::GeoIdCache& /*cache*/,
+      Acts::Surface& /*surface*/) const final {}
 };
 
 

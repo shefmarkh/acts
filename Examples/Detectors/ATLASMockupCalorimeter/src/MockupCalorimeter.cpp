@@ -11,11 +11,13 @@ std::vector<std::shared_ptr<const IDetectorComponentBuilder> >& builders){
   CylinderVolumeBounds gapBounds(rMin, rMax, halfLengthZ);
 
   auto gapCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gapBounds);
+  auto geoIdGenerator = std::make_shared<SurfaceGeoIdGenerator>();
 
   DetectorVolumeBuilder::Config gapCfg;
   gapCfg.name = gapName;
   gapCfg.externalsBuilder = gapCylinderBuilder;
   gapCfg.internalsBuilder = nullptr;
+  gapCfg.geoIdGenerator = geoIdGenerator;
 
   auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
     gapCfg, getDefaultLogger("DetectorVolumeBuilder", Logging::VERBOSE));
@@ -29,6 +31,7 @@ const double& layerHalfLengthZ, const std::string& cylinderName){
 
   CylinderVolumeBounds cylinderBounds(layerRMin, layerRMax, layerHalfLengthZ);
   auto externalCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), cylinderBounds);
+  auto geoIdGenerator = std::make_shared<SurfaceGeoIdGenerator>();
 
   nlohmann::json json;
   std::ifstream jsonFile(jsonFileName);
@@ -50,6 +53,7 @@ const double& layerHalfLengthZ, const std::string& cylinderName){
   volumeCfg.externalsBuilder = externalCylinderBuilder;
   volumeCfg.internalsBuilder = std::make_shared<LayerStructureBuilder>(Acts::Experimental::LayerStructureBuilder(
   lsConfig, Acts::getDefaultLogger(cylinderName, Logging::VERBOSE)));
+  volumeCfg.geoIdGenerator = geoIdGenerator;
 
   auto volumeBuilder = std::make_shared<DetectorVolumeBuilder>(volumeCfg, getDefaultLogger(cylinderName, Logging::VERBOSE));
 
