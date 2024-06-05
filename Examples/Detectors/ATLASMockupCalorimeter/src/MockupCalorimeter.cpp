@@ -2,6 +2,7 @@
 
 #include "Acts/Detector/CylindricalContainerBuilder.hpp"
 #include "Acts/Detector/DetectorBuilder.hpp"
+#include "Acts/Detector/GeometryIdGenerator.hpp"
 #include "Acts/Detector/LayerStructureBuilder.hpp"
 #include "Acts/Plugins/Json/SurfaceJsonConverter.hpp"
 
@@ -11,13 +12,12 @@ std::vector<std::shared_ptr<const IDetectorComponentBuilder> >& builders){
   CylinderVolumeBounds gapBounds(rMin, rMax, halfLengthZ);
 
   auto gapCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), gapBounds);
-  auto geoIdGenerator = std::make_shared<SurfaceGeoIdGenerator>();
+  auto geoIdGenerator = std::make_shared<GeometryIdGenerator>(GeometryIdGenerator::Config{});
 
   DetectorVolumeBuilder::Config gapCfg;
   gapCfg.name = gapName;
   gapCfg.externalsBuilder = gapCylinderBuilder;
   gapCfg.internalsBuilder = nullptr;
-  gapCfg.geoIdGenerator = geoIdGenerator;
 
   auto gapVolumeBuilder = std::make_shared<DetectorVolumeBuilder>(
     gapCfg, getDefaultLogger(gapName, Logging::VERBOSE));
@@ -31,7 +31,7 @@ const double& layerHalfLengthZ, const std::string& cylinderName){
 
   CylinderVolumeBounds cylinderBounds(layerRMin, layerRMax, layerHalfLengthZ);
   auto externalCylinderBuilder = std::make_shared<ExternalsBuilder<CylinderVolumeBounds>>(Transform3::Identity(), cylinderBounds);
-  auto geoIdGenerator = std::make_shared<SurfaceGeoIdGenerator>();
+  auto geoIdGenerator = std::make_shared<GeometryIdGenerator>(GeometryIdGenerator::Config{});
 
   nlohmann::json json;
   std::ifstream jsonFile(jsonFileName);
@@ -53,7 +53,6 @@ const double& layerHalfLengthZ, const std::string& cylinderName){
   volumeCfg.externalsBuilder = externalCylinderBuilder;
   volumeCfg.internalsBuilder = std::make_shared<LayerStructureBuilder>(Acts::Experimental::LayerStructureBuilder(
   lsConfig, Acts::getDefaultLogger(cylinderName, Logging::VERBOSE)));
-  volumeCfg.geoIdGenerator = geoIdGenerator;
 
   auto volumeBuilder = std::make_shared<DetectorVolumeBuilder>(volumeCfg, getDefaultLogger(cylinderName, Logging::VERBOSE));
 
@@ -65,6 +64,7 @@ std::shared_ptr<const Detector> constructCaloMockup(){
 
     CylindricalContainerBuilder::Config ccConfig;
     ccConfig.builders = std::vector<std::shared_ptr<const IDetectorComponentBuilder> >();
+    ccConfig.geoIdGenerator = std::make_shared<GeometryIdGenerator>(GeometryIdGenerator::Config{});
 
     double caloRMin = 0.00;//looping over all DDE in preSamplerB in Athena shows the minimal value of r is 1452.46
     double calorRMax = 3632.00;//looping over all DDE in TileBar2, TileGap2 and Tile Ext2 in Athena shows the maximal value of r is 3630.00
@@ -101,7 +101,7 @@ std::shared_ptr<const Detector> constructCaloMockup(){
     //EMB3: MinR and maxR in EMB3 are 1870.24 1949.76
     //EMB3: Half length in Z for EMB3 is 3277.42
 
-    addGapVolumeBuilder(1654,1868,caloHalfLengthZ,"Gap2",ccConfig.builders);
+    addGapVolumeBuilder(1654,1868,caloHalfLengthZ,"Gap3",ccConfig.builders);
 
     //EMB3
     addVolumeBuilder("CylinderSurfaces_EMB3.json",ccConfig.builders,1868,1951,3279,"EMB3");
@@ -109,7 +109,7 @@ std::shared_ptr<const Detector> constructCaloMockup(){
     //Gap between EMB3 and TileBar0.  According to CaloDetDescrElements in Athena:
     //TileBar0: MinR and maxR in TileBar0 are 2450 2450
     //TileBar0: Half length in Z for TileBar0 is 2656.48
-    addGapVolumeBuilder(1951,2448,caloHalfLengthZ,"Gap3",ccConfig.builders);
+    addGapVolumeBuilder(1951,2448,caloHalfLengthZ,"Gap4",ccConfig.builders);
 
     //TileBar0
     addVolumeBuilder("CylinderSurfaces_TileBar0.json",ccConfig.builders,2448,2452,2658,"TileBar0");
@@ -117,7 +117,7 @@ std::shared_ptr<const Detector> constructCaloMockup(){
     //Gap between TileBar0 and TileBar1.  According to CaloDetDescrElements in Athena:
     //TileBar1: MinR and maxR in TileBar1 are 2795 3020
     //TileBar1: Half length in Z for TileBar1 is 2642.79
-    addGapVolumeBuilder(2452,2793,caloHalfLengthZ,"Gap4",ccConfig.builders);
+    addGapVolumeBuilder(2452,2793,caloHalfLengthZ,"Gap5",ccConfig.builders);
 
     //TileBar1
     addVolumeBuilder("CylinderSurfaces_TileBar1.json",ccConfig.builders,2793,3022,2644,"TileBar1");
@@ -125,7 +125,7 @@ std::shared_ptr<const Detector> constructCaloMockup(){
     //Gap between TileBar1 and TileBar2.  According to CaloDetDescrElements in Athena:
     //TileBar2: MinR and maxR in TileBar2 are 3630 3630
     //TileBar2: Half length in Z for TileBar2 is 2346.1
-    addGapVolumeBuilder(3022,3628,caloHalfLengthZ,"Gap5",ccConfig.builders);
+    addGapVolumeBuilder(3022,3628,caloHalfLengthZ,"Gap6",ccConfig.builders);
 
     //TileBar2
     addVolumeBuilder("CylinderSurfaces_TileBar2.json",ccConfig.builders,3628,3632,2348,"TileBar2");
