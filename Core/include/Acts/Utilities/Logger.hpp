@@ -296,7 +296,7 @@ class OutputFilterPolicy {
   virtual bool doPrint(const Level& lvl) const = 0;
 
   /// Get the level of this filter policy
-  /// @return the levele
+  /// @return the level
   virtual Level level() const = 0;
 
   /// Make a copy of this filter policy with a new level
