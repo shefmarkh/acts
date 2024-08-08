@@ -8,7 +8,7 @@
 #include "Acts/Geometry/CylinderVolumeBounds.hpp"
 #include "Acts/Geometry/GeometryHierarchyMap.hpp"
 #include "Acts/Geometry/GeometryIdentifier.hpp"
-#include "Acts/Navigation/SurfaceCandidatesUpdaters.hpp"
+#include "Acts/Navigation/InternalNavigation.hpp"
 #include "Acts/Plugins/Json/ActsJson.hpp"
 #include "Acts/Plugins/Json/GeometryHierarchyMapJsonConverter.hpp"
 #include "Acts/Plugins/Json/SurfaceJsonConverter.hpp"
