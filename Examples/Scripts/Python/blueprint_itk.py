@@ -93,9 +93,9 @@ def draw(surfaces, name="debug"):
 
 print("Done")
 
-# for key, surfaces in layers["PIXEL"].items():
+# for key, surfaces in layers["STRIP"].items():
 #     print(key, len(surfaces))
-#     draw(surfaces, f"PIXEL_{key}")
+#     draw(surfaces, f"STRIP_{key}")
 #
 # sys.exit()
 
@@ -104,42 +104,6 @@ root = acts.RootBlueprintNode(
 )
 
 base = acts.Transform3.Identity()
-
-#
-# @dataclass
-# class SensorCluster:
-#     zmin: float
-#     zmax: float
-#     sensors: list
-#
-#     @staticmethod
-#     def merged(a: "SensorCluster", b: "SensorCluster") -> "SensorCluster":
-#         return SensorCluster(
-#             min(a.zmin, b.zmin), max(a.zmax, b.zmax), a.sensors + b.sensors
-#         )
-
-
-# def cluster_in_z(
-#     sensors: list[acts.Surface], window: float = 5 * mm
-# ) -> list[SensorCluster]:
-#     clusters = []
-#     for sensor in sensors:
-#         zpos = sensor.center(gctx)[2]
-#
-#         found = False
-#         for cluster in clusters:
-#             if abs(cluster.zmin - zpos) < window or abs(zpos - cluster.zmax) < window:
-#                 cluster.sensors.append(sensor)
-#                 zpositions = [s.center(gctx)[2] for s in cluster.sensors]
-#                 cluster.zmin = min(zpositions)
-#                 cluster.zmax = max(zpositions)
-#
-#                 found = True
-#                 break
-#
-#         if not found:
-#             clusters.append(SensorCluster(zpos, zpos, [sensor]))
-#     return clusters
 
 
 def cluster_in_z(
@@ -182,7 +146,7 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
             inner_pixel_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
 
             for i in (0, 1):
-                with inner_pixel_brl.Layer(f"InnerPixel_Layer_{i}") as layer:
+                with inner_pixel_brl.Layer(f"InnerPixel_Brl_{i}") as layer:
 
                     sensors = sum(
                         [
@@ -193,7 +157,7 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                         [],
                     )
 
-                    draw(sensors)
+                    draw(sensors, f"InnerPixel_Brl_{i}")
                     layer.surfaces = sensors
                     layer.envelope = acts.ExtentEnvelope(
                         r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
@@ -250,9 +214,9 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                     [],
                 )
 
-                draw(sensors)
+                draw(sensors, f"OuterPixel_Brl_{i}")
 
-                with outer_pixel_brl.Layer(f"OuterPixel_Layer_{i}") as layer:
+                with outer_pixel_brl.Layer(f"OuterPixel_Brl_{i}") as layer:
                     layer.surfaces = sensors
                     layer.envelope = acts.ExtentEnvelope(
                         r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
@@ -279,7 +243,6 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                     proto_layers.reverse()
 
                 print("have", len(proto_layers), "proto layers")
-                # print([(cluster.zmin, cluster.zmax) for cluster in clusters])
 
                 for i, pl in enumerate(proto_layers):
                     draw(pl.surfaces, f"OuterPixel_{s}EC_{i}")
@@ -289,6 +252,64 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                         layer.envelope = acts.ExtentEnvelope(
                             r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
                         )
+
+    with itk.CylinderContainer("Strip", acts.BinningValue.binZ) as strip:
+        with strip.CylinderContainer(
+            "InnerPixel_Brl", acts.BinningValue.binR
+        ) as strip_brl:
+            strip_brl.attachmentStrategy = (
+                acts.CylinderVolumeStack.AttachmentStrategy.Gap
+            )
+            strip_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+
+            for i in (0, 1, 2, 3):
+                with strip_brl.Layer(f"Strip_Brl_{i}") as layer:
+
+                    sensors = sum(
+                        [
+                            lay
+                            for (bec, ld, _), lay in layers["STRIP"].items()
+                            if bec == 0 and ld == i
+                        ],
+                        [],
+                    )
+
+                    draw(sensors, f"Strip_Brl_{i}")
+                    layer.surfaces = sensors
+                    layer.envelope = acts.ExtentEnvelope(
+                        r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
+                    )
+
+        for bec in (-2, 2):
+            s = "p" if bec > 0 else "n"
+            with strip.CylinderContainer(f"Strip_{s}EC", acts.BinningValue.binZ) as ec:
+                ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+
+                # groups = [
+                #     lay
+                #     for (b, ld, _), lay in layers["STRIP"].items()
+                #     if b == bec and ld in range(0, 5 + 1)
+                # ]
+
+                for i in range(0, 5 + 1):
+                    with ec.Layer(f"Strip_{s}EC_{i}") as layer:
+
+                        sensors = sum(
+                            [
+                                lay
+                                for (b, ld, _), lay in layers["STRIP"].items()
+                                if b == bec and ld == i
+                            ],
+                            [],
+                        )
+
+                        draw(sensors, f"Strip_{s}EC_{i}")
+                        layer.surfaces = sensors
+                        layer.envelope = acts.ExtentEnvelope(
+                            r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
+                        )
+
 
 with open("itk.dot", "w") as fh:
     root.graphViz(fh)
@@ -309,7 +330,7 @@ acts.pseudoNavigation(
     trackingGeometry,
     gctx,
     out / "pseudo.csv",
-    runs=10000,
+    runs=5000,
     substepsPerCm=2,
     logLevel=acts.logging.INFO,
 )
