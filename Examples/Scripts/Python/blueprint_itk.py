@@ -97,7 +97,12 @@ print("Done")
 #     print(key, len(surfaces))
 #     draw(surfaces, f"STRIP_{key}")
 #
+# for key, surfaces in layers["PIXEL"].items():
+#     print(key, len(surfaces))
+#     draw(surfaces, f"PIXEL_{key}")
+
 # sys.exit()
+
 
 root = acts.RootBlueprintNode(
     envelope=acts.ExtentEnvelope(r=[10 * mm, 10 * mm], z=[10 * mm, 10 * mm])
@@ -224,34 +229,69 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
 
         for bec in (-2, 2):
             s = "p" if bec > 0 else "n"
+            # Z grouped rings
+            # with outer_pixel.CylinderContainer(
+            #     f"OuterPixel_{s}EC", acts.BinningValue.binZ
+            # ) as ec:
+            #     ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
+            #     ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+            #
+            #     groups = [
+            #         lay
+            #         for (b, ld, _), lay in layers["PIXEL"].items()
+            #         if b == bec and ld in range(3, 8 + 1)
+            #     ]
+            #
+            #     proto_layers = cluster_in_z(groups, window=1 * mm)
+            #     proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
+            #
+            #     if bec == -2:
+            #         proto_layers.reverse()
+            #
+            #     print("have", len(proto_layers), "proto layers")
+            #
+            #     for i, pl in enumerate(proto_layers):
+            #         draw(pl.surfaces, f"OuterPixel_{s}EC_{i}")
+            #         with ec.Layer(name=f"OuterPixel_{s}EC_{i}") as layer:
+            #             layer.surfaces = pl.surfaces
+            #             layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
+            #             layer.envelope = acts.ExtentEnvelope(
+            #                 r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
+            #             )
+            #
+            # R stacked Z rings
             with outer_pixel.CylinderContainer(
-                f"OuterPixel_{s}EC", acts.BinningValue.binZ
-            ) as ec:
-                ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+                f"OuterPixel_{s}EC", acts.BinningValue.binR
+            ) as ec_outer:
 
-                groups = [
-                    lay
-                    for (b, ld, _), lay in layers["PIXEL"].items()
-                    if b == bec and ld in range(3, 8 + 1)
-                ]
+                for idx, group in enumerate([(3, 4), (6, 5), (7, 8)]):
+                    with ec_outer.CylinderContainer(
+                        f"OuterPixel_{s}EC_{idx}", acts.BinningValue.binZ
+                    ) as ec:
 
-                proto_layers = cluster_in_z(groups, window=1 * mm)
-                proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
+                        eta_rings = {}
 
-                if bec == -2:
-                    proto_layers.reverse()
+                        for (b, ld, eta), lay in layers["PIXEL"].items():
+                            if b != bec or ld not in group:
+                                continue
+                            eta_rings.setdefault((ld, eta), []).extend(lay)
 
-                print("have", len(proto_layers), "proto layers")
+                        print("have", len(eta_rings), "eta rings")
 
-                for i, pl in enumerate(proto_layers):
-                    draw(pl.surfaces, f"OuterPixel_{s}EC_{i}")
-                    with ec.Layer(name=f"OuterPixel_{s}EC_{i}") as layer:
-                        layer.surfaces = pl.surfaces
-                        layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
-                        layer.envelope = acts.ExtentEnvelope(
-                            r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
-                        )
+                        proto_layers = [
+                            acts.ProtoLayer(gctx, sensors)
+                            for sensors in eta_rings.values()
+                        ]
+                        proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
+
+                        for i, pl in enumerate(proto_layers):
+                            draw(pl.surfaces, f"OuterPixel_{s}EC_{idx}_{i}")
+                            with ec.Layer(name=f"OuterPixel_{s}EC_{idx}_{i}") as layer:
+                                layer.surfaces = pl.surfaces
+                                layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
+                                layer.envelope = acts.ExtentEnvelope(
+                                    r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
+                                )
 
     with itk.CylinderContainer("Strip", acts.BinningValue.binZ) as strip:
         with strip.CylinderContainer("Strip_Brl", acts.BinningValue.binR) as strip_brl:
@@ -283,12 +323,6 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
             with strip.CylinderContainer(f"Strip_{s}EC", acts.BinningValue.binZ) as ec:
                 ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
                 ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
-
-                # groups = [
-                #     lay
-                #     for (b, ld, _), lay in layers["STRIP"].items()
-                #     if b == bec and ld in range(0, 5 + 1)
-                # ]
 
                 for i in range(0, 5 + 1):
                     with ec.Layer(f"Strip_{s}EC_{i}") as layer:
@@ -329,6 +363,7 @@ acts.pseudoNavigation(
     gctx,
     out / "pseudo.csv",
     runs=5000,
+    etaRange=(-4.5, 4.5),
     substepsPerCm=2,
     logLevel=acts.logging.INFO,
 )
