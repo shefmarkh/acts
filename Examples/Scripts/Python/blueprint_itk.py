@@ -254,9 +254,7 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                         )
 
     with itk.CylinderContainer("Strip", acts.BinningValue.binZ) as strip:
-        with strip.CylinderContainer(
-            "InnerPixel_Brl", acts.BinningValue.binR
-        ) as strip_brl:
+        with strip.CylinderContainer("Strip_Brl", acts.BinningValue.binR) as strip_brl:
             strip_brl.attachmentStrategy = (
                 acts.CylinderVolumeStack.AttachmentStrategy.Gap
             )
