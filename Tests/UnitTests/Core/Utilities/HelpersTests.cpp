@@ -21,14 +21,20 @@
 #include <bitset>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <numbers>
 #include <string>
 #include <tuple>
+#include <type_traits>
+#include <typeinfo>
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include <boost/core/typeinfo.hpp>
+#include <boost/type_traits/function_traits.hpp>
 
 using namespace Acts::VectorHelpers;
 
@@ -323,6 +329,96 @@ BOOST_AUTO_TEST_CASE(Overloaded) {
                  [](A) { BOOST_CHECK(false); },
              },
              var);
+}
+
+template <typename T>
+class function_traits {
+  static_assert(sizeof(T) == 0, "function_traits<T>: T is not a function type");
+};
+
+template <typename R, typename C, typename... Ts>
+struct function_traits<R (C::*)(Ts...) const> {
+  constexpr static const std::size_t arity = sizeof...(Ts);
+  using result_type = R;
+};
+
+template <typename R, typename C, typename... Ts>
+struct function_traits<R (C::*)(Ts...)> {
+  constexpr static const std::size_t arity = sizeof...(Ts);
+  using result_type = R;
+};
+
+// template <typename F, typename Ret, typename A, typename... Rest>
+// A helper(Ret (F::*)(A, Rest...)) {}
+//
+// template <typename F, typename Ret, typename A, typename... Rest>
+// A helper(Ret (F::*)(A, Rest...) const) {}
+
+struct Base {
+  virtual ~Base() = default;
+};
+struct DerivedA : public Base {};
+struct DerivedB : public Base {};
+struct DerivedC : public Base {};
+
+template <class... Ts>
+struct downcast : Ts... {
+  // using Ts::operator()...;
+
+  template <class B>
+  void operator()(B& b) {
+    bool matched = false;
+    (extract(matched, b, &Ts::operator()), ...);
+    if (!matched) {
+      throw std::bad_cast{};
+    }
+  }
+
+  template <class B, class R, class C, typename T>
+  void extract(bool& matched, B& b, R (C::*fn)(T) const) {
+    if (matched) {
+      return;
+    }
+    using ptr_t = std::add_pointer_t<std::remove_reference_t<T>>;
+    std::cout << "Attempt downcast to "
+              << boost::core::demangle(typeid(ptr_t).name()) << std::endl;
+    auto* ptr = dynamic_cast<ptr_t>(&b);
+
+    if (ptr != nullptr) {
+      std::invoke(fn, this, *ptr);
+      matched = true;
+      // fn(*ptr);
+      // this->operator()(*ptr);
+    }
+  }
+
+  // template <class T>
+  // void extract() {
+  //   using Fn = decltype(&T::operator());
+  //   // using arg = boost::function_traits<Fn>::arg1_type;
+  //   std::cout << boost::core::demangle(typeid(Fn).name()) << std::endl;
+  //   using arg = function_traits<Fn>::result_type;
+  // };
+};
+
+template <class... Ts>
+downcast(Ts...) -> downcast<Ts...>;
+
+BOOST_AUTO_TEST_CASE(Downcaster) {
+  auto d = downcast{[](const DerivedA&) { std::cout << "A" << std::endl; },
+                    [](const DerivedB&) { std::cout << "B" << std::endl; }};
+
+  DerivedA a;
+  // d(a);
+
+  Base& ab = a;
+  d(ab);
+
+  DerivedB b;
+  d(b);
+
+  DerivedC c;
+  BOOST_CHECK_THROW(d(c), std::bad_cast);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
