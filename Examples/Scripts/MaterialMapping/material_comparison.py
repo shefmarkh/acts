@@ -12,14 +12,14 @@ PlotRecord = namedtuple(
 # The file records
 fileRecords = [
     FileRecord("geant4_material_tracks.root", "material-tracks", "Geant4", "blue", 3),
-    FileRecord("acts_material_tracks.root", "material-tracks", "Acts", "orange", 4),
+    FileRecord("gen3_itk_tracks.root", "material-tracks", "Acts", "orange", 4),
 ]
 
 
 # The plot records
 plotRecords = [
-    PlotRecord("v_eta", "t_X0", (-4.0, 4.0), 80, "η", "tX0_vs_eta.svg"),
-    PlotRecord("v_phi", "t_X0", (-math.pi, math.pi), 72, "φ", "tX0_vs_phi.svg"),
+    PlotRecord("v_eta", "t_X0", (-4.0, 4.0), 80, "η", "tX0_vs_eta.pdf"),
+    PlotRecord("v_phi", "t_X0", (-math.pi, math.pi), 72, "φ", "tX0_vs_phi.pdf"),
 ]
 
 # Different plot records
@@ -118,6 +118,8 @@ for pr in plotRecords:
 
     axs[0].legend(loc="upper center")
     axs[1].legend(loc="upper center")
+
+    axs[0].set_ylabel("Thickness [$X^0$]")
 
     # Set the range of x-axis
     plt.xlabel(pr.x_label)

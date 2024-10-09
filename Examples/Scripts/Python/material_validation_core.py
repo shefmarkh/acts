@@ -143,7 +143,9 @@ if "__main__" == __name__:
 
     materialDecorator = None
     if args.map != "":
-        materialDecorator = acts.IMaterialDecorator.fromFile(args.map)
+        materialDecorator = acts.IMaterialDecorator.fromFile(
+            args.map, level=acts.logging.VERBOSE
+        )
 
     if args.experimental:
         if len(args.geomodel_input) > 0:
@@ -244,10 +246,18 @@ if "__main__" == __name__:
             materialSurfaces = detector.extractMaterialSurfaces()
 
     else:
-        detector = getOpenDataDetector(materialDecorator)
-        trackingGeometry = detector.trackingGeometry()
+        # detector = getOpenDataDetector(materialDecorator)
+        # trackingGeometry = detector.trackingGeometry()
 
+        import blueprint_itk
+
+        gctx = acts.GeometryContext()
+        trackingGeometry, detector_elements = blueprint_itk.build_itk_gen3(gctx)
         materialSurfaces = trackingGeometry.extractMaterialSurfaces()
+        assert materialDecorator is not None
+
+        for ms in materialSurfaces:
+            materialDecorator.decorate(ms)
 
     s = acts.examples.Sequencer(events=args.events, numThreads=args.threads)
 
