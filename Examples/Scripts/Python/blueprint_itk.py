@@ -110,13 +110,17 @@ root = acts.RootBlueprintNode(
 
 base = acts.Transform3.Identity()
 
+cylFace = acts.CylinderVolumeBounds.Face
+bv = acts.BinningValue
+bdt = acts.AxisBoundaryType
+
 
 def cluster_in_z(
     groups: list[list[acts.Surface]], window: float = 0
 ) -> list[acts.ProtoLayer]:
     proto_layers = [acts.ProtoLayer(gctx, sensors) for sensors in groups]
 
-    proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
+    proto_layers.sort(key=lambda c: c.min(bv.binZ))
 
     merged = [proto_layers[0]]
 
@@ -126,7 +130,7 @@ def cluster_in_z(
         # print(" - ", prev.zmin, prev.zmax)
         # print(" - ", cluster.zmin, cluster.zmax)
 
-        if (prev.max(acts.BinningValue.binZ) + window) > pl.min(acts.BinningValue.binZ):
+        if (prev.max(bv.binZ) + window) > pl.min(bv.binZ):
             # print("Overlap", cluster.zmin, prev.zmax)
             merged[-1] = acts.ProtoLayer(gctx, prev.surfaces + pl.surfaces)
 
@@ -136,23 +140,140 @@ def cluster_in_z(
     return merged
 
 
-with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
-    itk.addStaticVolume(
-        base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
+mat_binning = [
+    (
+        cylFace.OuterCylinder,
+        acts.ProtoBinning(bValue=bv.binRPhi, bType=bdt.Bound, nbins=20),
+        acts.ProtoBinning(bValue=bv.binZ, bType=bdt.Bound, nbins=20),
     )
+]
 
-    with itk.CylinderContainer("InnerPixel", acts.BinningValue.binZ) as inner_pixel:
-        with inner_pixel.CylinderContainer(
-            "InnerPixel_Brl", acts.BinningValue.binR
-        ) as inner_pixel_brl:
-            inner_pixel_brl.attachmentStrategy = (
-                acts.CylinderVolumeStack.AttachmentStrategy.Gap
+
+with root.CylinderContainer("ITk", bv.binR) as itk:
+    with itk.Material(f"BeamPipe_Material") as mat:
+        mat.binning = [
+            (
+                cylFace.OuterCylinder,
+                acts.ProtoBinning(bValue=bv.binRPhi, bType=bdt.Bound, nbins=20),
+                acts.ProtoBinning(bValue=bv.binZ, bType=bdt.Bound, nbins=20),
             )
-            inner_pixel_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+        ]
+        mat.addStaticVolume(
+            base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
+        )
 
-            for i in (0, 1):
-                with inner_pixel_brl.Layer(f"InnerPixel_Brl_{i}") as layer:
+    with itk.Material("InnerPixelMaterial") as mat:
+        mat.binning = mat_binning
+        with mat.CylinderContainer("InnerPixel", bv.binZ) as inner_pixel:
+            with inner_pixel.CylinderContainer(
+                "InnerPixel_Brl", bv.binR
+            ) as inner_pixel_brl:
+                inner_pixel_brl.attachmentStrategy = (
+                    acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                )
+                inner_pixel_brl.resizeStrategy = (
+                    acts.CylinderVolumeStack.ResizeStrategy.Gap
+                )
 
+                for i in (0, 1):
+                    with inner_pixel_brl.Material(
+                        f"InnerPixel_Brl_{i}_Material"
+                    ) as lmat:
+                        lmat.binning = [
+                            (
+                                cylFace.InnerCylinder,
+                                acts.ProtoBinning(
+                                    bValue=bv.binRPhi, bType=bdt.Bound, nbins=20
+                                ),
+                                acts.ProtoBinning(
+                                    bValue=bv.binZ, bType=bdt.Bound, nbins=20
+                                ),
+                            )
+                        ]
+                        with lmat.Layer(f"InnerPixel_Brl_{i}") as layer:
+
+                            sensors = sum(
+                                [
+                                    lay
+                                    for (bec, ld, _), lay in layers["PIXEL"].items()
+                                    if bec == 0 and ld == i
+                                ],
+                                [],
+                            )
+
+                            draw(sensors, f"InnerPixel_Brl_{i}")
+                            layer.surfaces = sensors
+                            layer.envelope = acts.ExtentEnvelope(
+                                r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
+                            )
+
+            for bec in (-2, 2):
+                s = "p" if bec > 0 else "n"
+                with inner_pixel.CylinderContainer(f"InnerPixel_{s}EC", bv.binZ) as ec:
+                    ec.attachmentStrategy = (
+                        acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                    )
+                    ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+
+                    groups = [
+                        lay
+                        for (b, ld, _), lay in layers["PIXEL"].items()
+                        if b == bec and ld in (0, 1, 2)
+                    ]
+
+                    proto_layers = cluster_in_z(groups)
+                    proto_layers.sort(key=lambda c: c.min(bv.binZ))
+
+                    if bec == -2:
+                        proto_layers.reverse()
+
+                    print("have", len(proto_layers), "proto layers")
+                    # print([(cluster.zmin, cluster.zmax) for cluster in clusters])
+
+                    for i, pl in enumerate(proto_layers):
+                        draw(pl.surfaces, f"InnerPixel_{s}EC_{i}")
+
+                        lwrap = ec.Material(f"InnerPixel_{s}EC_{i}_Material")
+                        lwrap.binning = [
+                            (
+                                (
+                                    cylFace.NegativeDisc
+                                    if bec > 0
+                                    else cylFace.PositiveDisc
+                                ),
+                                acts.ProtoBinning(
+                                    bValue=bv.binPhi,
+                                    bType=bdt.Bound,
+                                    nbins=20,
+                                ),
+                                acts.ProtoBinning(
+                                    bValue=bv.binR,
+                                    bType=bdt.Bound,
+                                    nbins=20,
+                                ),
+                            )
+                        ]
+                        with lwrap.Layer(name=f"InnerPixel_{s}EC_{i}") as layer:
+                            layer.surfaces = pl.surfaces
+                            layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
+                            layer.envelope = acts.ExtentEnvelope(
+                                r=[2 * mm, 2 * mm], z=[2 * mm, 2 * mm]
+                            )
+
+    with itk.Material("OuterPixel_Material") as outer_pixel_mat:
+        outer_pixel_mat.binning = mat_binning
+        with outer_pixel_mat.CylinderContainer("OuterPixel", bv.binZ) as outer_pixel:
+            with outer_pixel.CylinderContainer(
+                "OuterPixel_Brl", bv.binR
+            ) as outer_pixel_brl:
+                outer_pixel_brl.attachmentStrategy = (
+                    acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                )
+                outer_pixel_brl.resizeStrategy = (
+                    acts.CylinderVolumeStack.ResizeStrategy.Gap
+                )
+
+                for i in (2, 3, 4):
                     sensors = sum(
                         [
                             lay
@@ -162,146 +283,183 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
                         [],
                     )
 
-                    draw(sensors, f"InnerPixel_Brl_{i}")
-                    layer.surfaces = sensors
-                    layer.envelope = acts.ExtentEnvelope(
-                        r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
-                    )
+                    draw(sensors, f"OuterPixel_Brl_{i}")
 
-        for bec in (-2, 2):
-            s = "p" if bec > 0 else "n"
-            with inner_pixel.CylinderContainer(
-                f"InnerPixel_{s}EC", acts.BinningValue.binZ
-            ) as ec:
-                ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
-
-                groups = [
-                    lay
-                    for (b, ld, _), lay in layers["PIXEL"].items()
-                    if b == bec and ld in (0, 1, 2)
-                ]
-
-                proto_layers = cluster_in_z(groups)
-                proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
-
-                if bec == -2:
-                    proto_layers.reverse()
-
-                print("have", len(proto_layers), "proto layers")
-                # print([(cluster.zmin, cluster.zmax) for cluster in clusters])
-
-                for i, pl in enumerate(proto_layers):
-                    draw(pl.surfaces, f"InnerPixel_{s}EC_{i}")
-                    with ec.Layer(name=f"InnerPixel_{s}EC_{i}") as layer:
-                        layer.surfaces = pl.surfaces
-                        layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
-                        layer.envelope = acts.ExtentEnvelope(
-                            r=[2 * mm, 2 * mm], z=[2 * mm, 2 * mm]
-                        )
-
-    with itk.CylinderContainer("OuterPixel", acts.BinningValue.binZ) as outer_pixel:
-        with outer_pixel.CylinderContainer(
-            "OuterPixel_Brl", acts.BinningValue.binR
-        ) as outer_pixel_brl:
-            outer_pixel_brl.attachmentStrategy = (
-                acts.CylinderVolumeStack.AttachmentStrategy.Gap
-            )
-            outer_pixel_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
-
-            for i in (2, 3, 4):
-                sensors = sum(
-                    [
-                        lay
-                        for (bec, ld, _), lay in layers["PIXEL"].items()
-                        if bec == 0 and ld == i
-                    ],
-                    [],
-                )
-
-                draw(sensors, f"OuterPixel_Brl_{i}")
-
-                with outer_pixel_brl.Layer(f"OuterPixel_Brl_{i}") as layer:
-                    layer.surfaces = sensors
-                    layer.envelope = acts.ExtentEnvelope(
-                        r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
-                    )
-
-        for bec in (-2, 2):
-            s = "p" if bec > 0 else "n"
-            # Z grouped rings
-            # with outer_pixel.CylinderContainer(
-            #     f"OuterPixel_{s}EC", acts.BinningValue.binZ
-            # ) as ec:
-            #     ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
-            #     ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
-            #
-            #     groups = [
-            #         lay
-            #         for (b, ld, _), lay in layers["PIXEL"].items()
-            #         if b == bec and ld in range(3, 8 + 1)
-            #     ]
-            #
-            #     proto_layers = cluster_in_z(groups, window=1 * mm)
-            #     proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
-            #
-            #     if bec == -2:
-            #         proto_layers.reverse()
-            #
-            #     print("have", len(proto_layers), "proto layers")
-            #
-            #     for i, pl in enumerate(proto_layers):
-            #         draw(pl.surfaces, f"OuterPixel_{s}EC_{i}")
-            #         with ec.Layer(name=f"OuterPixel_{s}EC_{i}") as layer:
-            #             layer.surfaces = pl.surfaces
-            #             layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
-            #             layer.envelope = acts.ExtentEnvelope(
-            #                 r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
-            #             )
-            #
-            # R stacked Z rings
-            with outer_pixel.CylinderContainer(
-                f"OuterPixel_{s}EC", acts.BinningValue.binR
-            ) as ec_outer:
-
-                for idx, group in enumerate([(3, 4), (6, 5), (7, 8)]):
-                    with ec_outer.CylinderContainer(
-                        f"OuterPixel_{s}EC_{idx}", acts.BinningValue.binZ
-                    ) as ec:
-
-                        eta_rings = {}
-
-                        for (b, ld, eta), lay in layers["PIXEL"].items():
-                            if b != bec or ld not in group:
-                                continue
-                            eta_rings.setdefault((ld, eta), []).extend(lay)
-
-                        print("have", len(eta_rings), "eta rings")
-
-                        proto_layers = [
-                            acts.ProtoLayer(gctx, sensors)
-                            for sensors in eta_rings.values()
+                    with outer_pixel_brl.Material(
+                        f"OuterPixel_Brl_{i}_Material"
+                    ) as mat:
+                        mat.binning = [
+                            (
+                                cylFace.InnerCylinder,
+                                acts.ProtoBinning(
+                                    bValue=bv.binRPhi, bType=bdt.Bound, nbins=20
+                                ),
+                                acts.ProtoBinning(
+                                    bValue=bv.binZ, bType=bdt.Bound, nbins=20
+                                ),
+                            )
                         ]
-                        proto_layers.sort(key=lambda c: c.min(acts.BinningValue.binZ))
+                        with mat.Layer(f"OuterPixel_Brl_{i}") as layer:
+                            layer.surfaces = sensors
+                            layer.envelope = acts.ExtentEnvelope(
+                                r=[2 * mm, 2 * mm], z=[5 * mm, 5 * mm]
+                            )
 
-                        for i, pl in enumerate(proto_layers):
-                            draw(pl.surfaces, f"OuterPixel_{s}EC_{idx}_{i}")
-                            with ec.Layer(name=f"OuterPixel_{s}EC_{idx}_{i}") as layer:
-                                layer.surfaces = pl.surfaces
-                                layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
-                                layer.envelope = acts.ExtentEnvelope(
-                                    r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
+            for bec in (-2, 2):
+                s = "p" if bec > 0 else "n"
+                # Z grouped rings
+                # with outer_pixel.CylinderContainer(
+                #     f"OuterPixel_{s}EC", bv.binZ
+                # ) as ec:
+                #     ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                #     ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+                #
+                #     groups = [
+                #         lay
+                #         for (b, ld, _), lay in layers["PIXEL"].items()
+                #         if b == bec and ld in range(3, 8 + 1)
+                #     ]
+                #
+                #     proto_layers = cluster_in_z(groups, window=1 * mm)
+                #     proto_layers.sort(key=lambda c: c.min(bv.binZ))
+                #
+                #     if bec == -2:
+                #         proto_layers.reverse()
+                #
+                #     print("have", len(proto_layers), "proto layers")
+                #
+                #     for i, pl in enumerate(proto_layers):
+                #         draw(pl.surfaces, f"OuterPixel_{s}EC_{i}")
+                #         with ec.Layer(name=f"OuterPixel_{s}EC_{i}") as layer:
+                #             layer.surfaces = pl.surfaces
+                #             layer.layerType = acts.LayerBlueprintNode.LayerType.Disc
+                #             layer.envelope = acts.ExtentEnvelope(
+                #                 r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
+                #             )
+                #
+                # R stacked Z rings
+                with outer_pixel.Material(
+                    f"OuterPixel_{s}EC_Material"
+                ) as outer_pixel_ec_mat:
+                    outer_pixel_ec_mat.binning = [
+                        (
+                            (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
+                            acts.ProtoBinning(
+                                bValue=bv.binPhi,
+                                bType=bdt.Bound,
+                                nbins=20,
+                            ),
+                            acts.ProtoBinning(
+                                bValue=bv.binR,
+                                bType=bdt.Bound,
+                                nbins=20,
+                            ),
+                        )
+                    ]
+                    with outer_pixel_ec_mat.CylinderContainer(
+                        f"OuterPixel_{s}EC", bv.binR
+                    ) as ec_outer:
+
+                        for idx, group in enumerate([(3, 4), (6, 5), (7, 8)]):
+                            if idx < 2:
+                                wrap = ec_outer.Material(
+                                    f"OuterPixel_{s}EC_{idx}_Material"
                                 )
+                                wrap.binning = mat_binning
+                            else:
+                                wrap = ec_outer
 
-    with itk.CylinderContainer("Strip", acts.BinningValue.binZ) as strip:
-        with strip.CylinderContainer("Strip_Brl", acts.BinningValue.binR) as strip_brl:
+                            with wrap.CylinderContainer(
+                                f"OuterPixel_{s}EC_{idx}", bv.binZ
+                            ) as ec:
+
+                                if idx == 1:
+                                    ec.attachmentStrategy = (
+                                        acts.CylinderVolumeStack.AttachmentStrategy.Gap
+                                    )
+
+                                eta_rings = {}
+
+                                for (b, ld, eta), lay in layers["PIXEL"].items():
+                                    if b != bec or ld not in group:
+                                        continue
+                                    eta_rings.setdefault((ld, eta), []).extend(lay)
+
+                                print("have", len(eta_rings), "eta rings")
+
+                                proto_layers = [
+                                    acts.ProtoLayer(gctx, sensors)
+                                    for sensors in eta_rings.values()
+                                ]
+                                proto_layers.sort(key=lambda c: abs(c.min(bv.binZ)))
+
+                                for i, pl in enumerate(proto_layers):
+                                    draw(pl.surfaces, f"OuterPixel_{s}EC_{idx}_{i}")
+
+                                    # if i < len(proto_layers) - 1:
+                                    if i > 0:
+                                        lwrap = ec.Material(
+                                            f"OuterPixel_{s}EC_{idx}_{i}_Material"
+                                        )
+
+                                        if bec < 0:
+                                            face = cylFace.PositiveDisc
+                                        else:
+                                            face = cylFace.NegativeDisc
+
+                                        lwrap.binning = [
+                                            (
+                                                face,
+                                                acts.ProtoBinning(
+                                                    bValue=bv.binPhi,
+                                                    bType=bdt.Bound,
+                                                    nbins=20,
+                                                ),
+                                                acts.ProtoBinning(
+                                                    bValue=bv.binR,
+                                                    bType=bdt.Bound,
+                                                    nbins=20,
+                                                ),
+                                            )
+                                        ]
+                                    else:
+                                        lwrap = ec
+
+                                    with lwrap.Layer(
+                                        name=f"OuterPixel_{s}EC_{idx}_{i}"
+                                    ) as layer:
+                                        layer.surfaces = pl.surfaces
+                                        layer.layerType = (
+                                            acts.LayerBlueprintNode.LayerType.Disc
+                                        )
+                                        layer.envelope = acts.ExtentEnvelope(
+                                            r=[2 * mm, 2 * mm], z=[0.1 * mm, 0.1 * mm]
+                                        )
+
+    with itk.CylinderContainer("Strip", bv.binZ) as strip:
+        with strip.CylinderContainer("Strip_Brl", bv.binR) as strip_brl:
             strip_brl.attachmentStrategy = (
                 acts.CylinderVolumeStack.AttachmentStrategy.Gap
             )
             strip_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
 
             for i in (0, 1, 2, 3):
-                with strip_brl.Layer(f"Strip_Brl_{i}") as layer:
+                if i < 3:
+                    lwrap = strip_brl.Material(f"Strip_Brl_{i}_Material")
+                    lwrap.binning = [
+                        (
+                            cylFace.InnerCylinder,
+                            acts.ProtoBinning(
+                                bValue=bv.binRPhi, bType=bdt.Bound, nbins=20
+                            ),
+                            acts.ProtoBinning(
+                                bValue=bv.binZ, bType=bdt.Bound, nbins=20
+                            ),
+                        )
+                    ]
+                else:
+                    lwrap = strip_brl
+                with lwrap.Layer(f"Strip_Brl_{i}") as layer:
 
                     sensors = sum(
                         [
@@ -320,12 +478,29 @@ with root.CylinderContainer("ITk", acts.BinningValue.binR) as itk:
 
         for bec in (-2, 2):
             s = "p" if bec > 0 else "n"
-            with strip.CylinderContainer(f"Strip_{s}EC", acts.BinningValue.binZ) as ec:
+            with strip.CylinderContainer(f"Strip_{s}EC", bv.binZ) as ec:
                 ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
                 ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
 
                 for i in range(0, 5 + 1):
-                    with ec.Layer(f"Strip_{s}EC_{i}") as layer:
+                    lwrap = ec.Material(f"Strip_{s}EC_{i}_Material")
+                    lwrap.binning = [
+                        (
+                            (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
+                            acts.ProtoBinning(
+                                bValue=bv.binPhi,
+                                bType=bdt.Bound,
+                                nbins=20,
+                            ),
+                            acts.ProtoBinning(
+                                bValue=bv.binR,
+                                bType=bdt.Bound,
+                                nbins=20,
+                            ),
+                        )
+                    ]
+
+                    with lwrap.Layer(f"Strip_{s}EC_{i}") as layer:
 
                         sensors = sum(
                             [
@@ -362,7 +537,7 @@ acts.pseudoNavigation(
     trackingGeometry,
     gctx,
     out / "pseudo.csv",
-    runs=5000,
+    runs=10000,
     etaRange=(-4.5, 4.5),
     substepsPerCm=2,
     logLevel=acts.logging.INFO,
