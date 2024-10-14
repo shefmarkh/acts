@@ -149,6 +149,8 @@ def build_itk_gen3(
     base = acts.Transform3.Identity()
 
     with root.CylinderContainer("ITk", bv.binR) as itk:
+        itk.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Second
+
         with itk.Material(f"BeamPipe_Material") as mat:
             mat.binning = [
                 (
@@ -161,9 +163,9 @@ def build_itk_gen3(
                 base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
             )
 
-        # build_inner_pixel(layers["PIXEL"], out, itk)
+        build_inner_pixel(layers["PIXEL"], out, itk)
         build_outer_pixel(layers["PIXEL"], out, itk)
-        # build_strip(layers["STRIP"], out, itk)
+        build_strip(layers["STRIP"], out, itk)
 
     if out is not None:
         with open(out / "itk.dot", "w") as fh:
@@ -462,6 +464,18 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                         [],
                     )
 
+                    layer.navigationPolicyFactory = (
+                        acts.NavigationPolicyFactory.make()
+                        .add(acts.TryAllPortalNavigationPolicy)
+                        .add(
+                            acts.SurfaceArrayNavigationPolicy,
+                            acts.SurfaceArrayNavigationPolicy.Config(
+                                layerType=acts.SurfaceArrayNavigationPolicy.LayerType.Cylinder,
+                                bins=(30, 10),
+                            ),
+                        )
+                    )
+
                     draw(out, sensors, f"Strip_Brl_{i}")
                     layer.surfaces = sensors
                     layer.envelope = acts.ExtentEnvelope(
@@ -503,6 +517,18 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                             [],
                         )
 
+                        layer.navigationPolicyFactory = (
+                            acts.NavigationPolicyFactory.make()
+                            .add(acts.TryAllPortalNavigationPolicy)
+                            .add(
+                                acts.SurfaceArrayNavigationPolicy,
+                                acts.SurfaceArrayNavigationPolicy.Config(
+                                    layerType=acts.SurfaceArrayNavigationPolicy.LayerType.Disc,
+                                    bins=(1, 8),
+                                ),
+                            )
+                        )
+
                         draw(out, sensors, f"Strip_{s}EC_{i}")
                         layer.surfaces = sensors
                         layer.envelope = acts.ExtentEnvelope(
@@ -530,7 +556,7 @@ if __name__ == "__main__":
         trackingGeometry,
         gctx,
         out / "pseudo.csv",
-        runs=10000,
+        runs=5000,
         etaRange=(-4.5, 4.5),
         substepsPerCm=2,
         logLevel=acts.logging.INFO,
