@@ -466,7 +466,10 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
 
                     layer.navigationPolicyFactory = (
                         acts.NavigationPolicyFactory.make()
-                        .add(acts.TryAllPortalNavigationPolicy)
+                        .add(
+                            acts.TryAllNavigationPolicy,
+                            acts.TryAllNavigationPolicy.Config(sensitives=False),
+                        )
                         .add(
                             acts.SurfaceArrayNavigationPolicy,
                             acts.SurfaceArrayNavigationPolicy.Config(
@@ -519,7 +522,10 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
 
                         layer.navigationPolicyFactory = (
                             acts.NavigationPolicyFactory.make()
-                            .add(acts.TryAllPortalNavigationPolicy)
+                            .add(
+                                acts.TryAllNavigationPolicy,
+                                acts.TryAllNavigationPolicy.Config(sensitives=False),
+                            )
                             .add(
                                 acts.SurfaceArrayNavigationPolicy,
                                 acts.SurfaceArrayNavigationPolicy.Config(
