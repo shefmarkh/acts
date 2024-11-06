@@ -546,7 +546,9 @@ if __name__ == "__main__":
     out.mkdir(exist_ok=True)
 
     gctx = acts.GeometryContext()
-    trackingGeometry, detector_elements = build_itk_gen3(gctx, out)
+    trackingGeometry, detector_elements = build_itk_gen3(
+        gctx, out, logLevel=acts.logging.VERBOSE
+    )
     vis = acts.ObjVisualization3D()
     trackingGeometry.visualize(vis, gctx, acts.ViewConfig())
 
@@ -554,13 +556,13 @@ if __name__ == "__main__":
 
     vis.write(out / "itk.obj")
 
-    # print("Go pseudo navigation")
-    # acts.pseudoNavigation(
-    #     trackingGeometry,
-    #     gctx,
-    #     out / "pseudo.csv",
-    #     runs=10000,
-    #     etaRange=(-4.5, 4.5),
-    #     substepsPerCm=2,
-    #     logLevel=acts.logging.INFO,
-    # )
+    print("Go pseudo navigation")
+    acts.pseudoNavigation(
+        trackingGeometry,
+        gctx,
+        out / "pseudo.csv",
+        runs=10000,
+        etaRange=(-4.5, 4.5),
+        substepsPerCm=2,
+        logLevel=acts.logging.INFO,
+    )
