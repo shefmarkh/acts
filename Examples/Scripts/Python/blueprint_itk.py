@@ -556,7 +556,7 @@ if __name__ == "__main__":
         trackingGeometry,
         gctx,
         out / "pseudo.csv",
-        runs=5000,
+        runs=10000,
         etaRange=(-4.5, 4.5),
         substepsPerCm=2,
         logLevel=acts.logging.INFO,
