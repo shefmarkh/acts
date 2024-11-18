@@ -142,7 +142,7 @@ def build_itk_gen3(
 
     # sys.exit()
 
-    root = acts.RootBlueprintNode(
+    root = acts.Blueprint(
         envelope=acts.ExtentEnvelope(r=[10 * mm, 10 * mm], z=[10 * mm, 10 * mm])
     )
 
