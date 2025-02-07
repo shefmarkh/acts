@@ -2,22 +2,23 @@
 
 from pathlib import Path
 import re
-import sys
 
 import acts
-from dataclasses import dataclass
 
 mm = acts.UnitConstants.mm
 m = acts.UnitConstants.m
 gm = acts.geomodel
 
-geo_base = Path("/Users/pagessin/cernbox/sync_root/ITkGeometry")
+geo_base = Path("/Users/pagessin/cernbox/ITkGeometry")
 strip_database = geo_base / "ITkStrips.db"
 pixel_database = geo_base / "ITkPixels.db"
 
 cylFace = acts.CylinderVolumeBounds.Face
-bv = acts.BinningValue
+aDir = acts.AxisDirection
 bdt = acts.AxisBoundaryType
+
+AttachmentStrategy = acts.VolumeAttachmentStrategy
+ResizeStrategy = acts.VolumeResizeStrategy
 
 
 def draw(out: Path | None, surfaces, name="debug"):
@@ -33,8 +34,8 @@ def draw(out: Path | None, surfaces, name="debug"):
 mat_binning = [
     (
         cylFace.OuterCylinder,
-        acts.ProtoBinning(bValue=bv.binRPhi, bType=bdt.Bound, nbins=20),
-        acts.ProtoBinning(bValue=bv.binZ, bType=bdt.Bound, nbins=20),
+        acts.ProtoBinning(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+        acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
     )
 ]
 
@@ -44,7 +45,7 @@ def cluster_in_z(
 ) -> list[acts.ProtoLayer]:
     proto_layers = [acts.ProtoLayer(gctx, sensors) for sensors in groups]
 
-    proto_layers.sort(key=lambda c: c.min(bv.binZ))
+    proto_layers.sort(key=lambda c: c.min(aDir.AxisZ))
 
     merged = [proto_layers[0]]
 
@@ -54,7 +55,7 @@ def cluster_in_z(
         # print(" - ", prev.zmin, prev.zmax)
         # print(" - ", cluster.zmin, cluster.zmax)
 
-        if (prev.max(bv.binZ) + window) > pl.min(bv.binZ):
+        if (prev.max(aDir.AxisZ) + window) > pl.min(aDir.AxisZ):
             # print("Overlap", cluster.zmin, prev.zmax)
             merged[-1] = acts.ProtoLayer(gctx, prev.surfaces + pl.surfaces)
 
@@ -148,15 +149,15 @@ def build_itk_gen3(
 
     base = acts.Transform3.Identity()
 
-    with root.CylinderContainer("ITk", bv.binR) as itk:
-        itk.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Second
+    with root.CylinderContainer("ITk", aDir.AxisR) as itk:
+        itk.attachmentStrategy = acts.VolumeAttachmentStrategy.Second
 
-        with itk.Material(f"BeamPipe_Material") as mat:
+        with itk.Material("BeamPipe_Material") as mat:
             mat.binning = [
                 (
                     cylFace.OuterCylinder,
-                    acts.ProtoBinning(bValue=bv.binRPhi, bType=bdt.Bound, nbins=20),
-                    acts.ProtoBinning(bValue=bv.binZ, bType=bdt.Bound, nbins=20),
+                    acts.ProtoBinning(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+                    acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
                 )
             ]
             mat.addStaticVolume(
@@ -169,11 +170,9 @@ def build_itk_gen3(
 
     if out is not None:
         with open(out / "itk.dot", "w") as fh:
-            root.graphViz(fh)
+            root.graphviz(fh)
 
-    trackingGeometry = root.construct(
-        acts.BlueprintNode.Options(), gctx, level=logLevel
-    )
+    trackingGeometry = root.construct(acts.BlueprintOptions(), gctx, level=logLevel)
 
     return trackingGeometry, detector_elements
 
@@ -181,16 +180,12 @@ def build_itk_gen3(
 def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
     with itk.Material("InnerPixelMaterial") as mat:
         mat.binning = mat_binning
-        with mat.CylinderContainer("InnerPixel", bv.binZ) as inner_pixel:
+        with mat.CylinderContainer("InnerPixel", aDir.AxisZ) as inner_pixel:
             with inner_pixel.CylinderContainer(
-                "InnerPixel_Brl", bv.binR
+                "InnerPixel_Brl", aDir.AxisR
             ) as inner_pixel_brl:
-                inner_pixel_brl.attachmentStrategy = (
-                    acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                )
-                inner_pixel_brl.resizeStrategy = (
-                    acts.CylinderVolumeStack.ResizeStrategy.Gap
-                )
+                inner_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
+                inner_pixel_brl.resizeStrategy = ResizeStrategy.Gap
 
                 for i in (0, 1):
                     with inner_pixel_brl.Material(
@@ -204,10 +199,10 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                                     else cylFace.InnerCylinder
                                 ),
                                 acts.ProtoBinning(
-                                    bValue=bv.binRPhi, bType=bdt.Bound, nbins=40
+                                    bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40
                                 ),
                                 acts.ProtoBinning(
-                                    bValue=bv.binZ, bType=bdt.Bound, nbins=20
+                                    bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                                 ),
                             )
                         ]
@@ -230,11 +225,11 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
 
             for bec in (-2, 2):
                 s = "p" if bec > 0 else "n"
-                with inner_pixel.CylinderContainer(f"InnerPixel_{s}EC", bv.binZ) as ec:
-                    ec.attachmentStrategy = (
-                        acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                    )
-                    ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+                with inner_pixel.CylinderContainer(
+                    f"InnerPixel_{s}EC", aDir.AxisZ
+                ) as ec:
+                    ec.attachmentStrategy = AttachmentStrategy.Gap
+                    ec.resizeStrategy = ResizeStrategy.Gap
 
                     groups = [
                         lay
@@ -243,7 +238,7 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                     ]
 
                     proto_layers = cluster_in_z(groups)
-                    proto_layers.sort(key=lambda c: c.min(bv.binZ))
+                    proto_layers.sort(key=lambda c: c.min(aDir.AxisZ))
 
                     if bec == -2:
                         proto_layers.reverse()
@@ -263,14 +258,14 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                                     else cylFace.PositiveDisc
                                 ),
                                 acts.ProtoBinning(
-                                    bValue=bv.binPhi,
-                                    bType=bdt.Bound,
-                                    nbins=40,
-                                ),
-                                acts.ProtoBinning(
-                                    bValue=bv.binR,
+                                    bValue=aDir.AxisR,
                                     bType=bdt.Bound,
                                     nbins=20,
+                                ),
+                                acts.ProtoBinning(
+                                    bValue=aDir.AxisPhi,
+                                    bType=bdt.Bound,
+                                    nbins=40,
                                 ),
                             )
                         ]
@@ -285,16 +280,12 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
 def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
     with itk.Material("OuterPixel_Material") as outer_pixel_mat:
         outer_pixel_mat.binning = mat_binning
-        with outer_pixel_mat.CylinderContainer("OuterPixel", bv.binZ) as outer_pixel:
+        with outer_pixel_mat.CylinderContainer("OuterPixel", aDir.AxisZ) as outer_pixel:
             with outer_pixel.CylinderContainer(
-                "OuterPixel_Brl", bv.binR
+                "OuterPixel_Brl", aDir.AxisR
             ) as outer_pixel_brl:
-                outer_pixel_brl.attachmentStrategy = (
-                    acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                )
-                outer_pixel_brl.resizeStrategy = (
-                    acts.CylinderVolumeStack.ResizeStrategy.Gap
-                )
+                outer_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
+                outer_pixel_brl.resizeStrategy = ResizeStrategy.Gap
 
                 for i in (2, 3, 4):
                     sensors = sum(
@@ -315,10 +306,10 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                             (
                                 cylFace.InnerCylinder,
                                 acts.ProtoBinning(
-                                    bValue=bv.binRPhi, bType=bdt.Bound, nbins=20
+                                    bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20
                                 ),
                                 acts.ProtoBinning(
-                                    bValue=bv.binZ, bType=bdt.Bound, nbins=20
+                                    bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                                 ),
                             )
                         ]
@@ -338,19 +329,19 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                         (
                             (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
                             acts.ProtoBinning(
-                                bValue=bv.binPhi,
-                                bType=bdt.Bound,
-                                nbins=40,
-                            ),
-                            acts.ProtoBinning(
-                                bValue=bv.binR,
+                                bValue=aDir.AxisR,
                                 bType=bdt.Bound,
                                 nbins=20,
+                            ),
+                            acts.ProtoBinning(
+                                bValue=aDir.AxisPhi,
+                                bType=bdt.Bound,
+                                nbins=40,
                             ),
                         )
                     ]
                     with outer_pixel_ec_mat.CylinderContainer(
-                        f"OuterPixel_{s}EC", bv.binR
+                        f"OuterPixel_{s}EC", aDir.AxisR
                     ) as ec_outer:
 
                         for idx, group in enumerate([(3, 4), (6, 5), (7, 8)]):
@@ -363,13 +354,11 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                                 wrap = ec_outer
 
                             with wrap.CylinderContainer(
-                                f"OuterPixel_{s}EC_{idx}", bv.binZ
+                                f"OuterPixel_{s}EC_{idx}", aDir.AxisZ
                             ) as ec:
 
                                 if idx == 1:
-                                    ec.attachmentStrategy = (
-                                        acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                                    )
+                                    ec.attachmentStrategy = AttachmentStrategy.Gap
 
                                 eta_rings = {}
 
@@ -384,7 +373,7 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                                     acts.ProtoLayer(gctx, sensors)
                                     for sensors in eta_rings.values()
                                 ]
-                                proto_layers.sort(key=lambda c: abs(c.min(bv.binZ)))
+                                proto_layers.sort(key=lambda c: abs(c.min(aDir.AxisZ)))
 
                                 for i, pl in enumerate(proto_layers):
                                     draw(
@@ -408,14 +397,14 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                                             (
                                                 face,
                                                 acts.ProtoBinning(
-                                                    bValue=bv.binPhi,
-                                                    bType=bdt.Bound,
-                                                    nbins=40,
-                                                ),
-                                                acts.ProtoBinning(
-                                                    bValue=bv.binR,
+                                                    bValue=aDir.AxisR,
                                                     bType=bdt.Bound,
                                                     nbins=20,
+                                                ),
+                                                acts.ProtoBinning(
+                                                    bValue=aDir.AxisPhi,
+                                                    bType=bdt.Bound,
+                                                    nbins=40,
                                                 ),
                                             )
                                         ]
@@ -436,20 +425,20 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
 
 def build_strip(layers, out, itk: acts.BlueprintNode):
-    with itk.CylinderContainer("Strip", bv.binZ) as strip:
-        with strip.CylinderContainer("Strip_Brl", bv.binR) as strip_brl:
-            strip_brl.attachmentStrategy = (
-                acts.CylinderVolumeStack.AttachmentStrategy.Gap
-            )
-            strip_brl.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+    with itk.CylinderContainer("Strip", aDir.AxisZ) as strip:
+        with strip.CylinderContainer("Strip_Brl", aDir.AxisR) as strip_brl:
+            strip_brl.attachmentStrategy = AttachmentStrategy.Gap
+            strip_brl.resizeStrategy = ResizeStrategy.Gap
 
             for i in (0, 1, 2, 3):
                 lwrap = strip_brl.Material(f"Strip_Brl_{i}_Material")
                 lwrap.binning = [
                     (
                         cylFace.InnerCylinder,
-                        acts.ProtoBinning(bValue=bv.binRPhi, bType=bdt.Bound, nbins=40),
-                        acts.ProtoBinning(bValue=bv.binZ, bType=bdt.Bound, nbins=20),
+                        acts.ProtoBinning(
+                            bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40
+                        ),
+                        acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
                     )
                 ]
 
@@ -487,9 +476,9 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
 
         for bec in (-2, 2):
             s = "p" if bec > 0 else "n"
-            with strip.CylinderContainer(f"Strip_{s}EC", bv.binZ) as ec:
-                ec.attachmentStrategy = acts.CylinderVolumeStack.AttachmentStrategy.Gap
-                ec.resizeStrategy = acts.CylinderVolumeStack.ResizeStrategy.Gap
+            with strip.CylinderContainer(f"Strip_{s}EC", aDir.AxisZ) as ec:
+                ec.attachmentStrategy = AttachmentStrategy.Gap
+                ec.resizeStrategy = ResizeStrategy.Gap
 
                 for i in range(0, 5 + 1):
                     lwrap = ec.Material(f"Strip_{s}EC_{i}_Material")
@@ -497,14 +486,14 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                         (
                             (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
                             acts.ProtoBinning(
-                                bValue=bv.binPhi,
-                                bType=bdt.Bound,
-                                nbins=40,
-                            ),
-                            acts.ProtoBinning(
-                                bValue=bv.binR,
+                                bValue=aDir.AxisR,
                                 bType=bdt.Bound,
                                 nbins=20,
+                            ),
+                            acts.ProtoBinning(
+                                bValue=aDir.AxisPhi,
+                                bType=bdt.Bound,
+                                nbins=40,
                             ),
                         )
                     ]
@@ -557,13 +546,13 @@ if __name__ == "__main__":
 
     vis.write(out / "itk.obj")
 
-    print("Go pseudo navigation")
-    acts.pseudoNavigation(
-        trackingGeometry,
-        gctx,
-        out / "pseudo.csv",
-        runs=10000,
-        etaRange=(-4.5, 4.5),
-        substepsPerCm=2,
-        logLevel=acts.logging.INFO,
-    )
+    # print("Go pseudo navigation")
+    # acts.pseudoNavigation(
+    #     trackingGeometry,
+    #     gctx,
+    #     out / "pseudo.csv",
+    #     runs=10000,
+    #     etaRange=(-4.5, 4.5),
+    #     substepsPerCm=2,
+    #     logLevel=acts.logging.INFO,
+    # )
