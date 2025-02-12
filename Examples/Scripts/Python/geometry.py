@@ -15,6 +15,7 @@ from acts.examples import (
     JsonSurfacesWriter,
     JsonMaterialWriter,
     JsonFormat,
+    GenericDetector,
 )
 
 
@@ -87,14 +88,70 @@ def runGeometry(
             jmw.write(trackingGeometry)
 
 
+class Visitor(acts.TrackingGeometryMutableVisitor):
+    def __init__(self):
+        super().__init__()
+
+        self.num_surfaces = 0
+        self.string = ""
+
+    def visitSurface(self, surface: acts.Surface):
+        # print(surface.geometryId)
+        self.string += f"{surface.geometryId}\n"
+        self.num_surfaces += 1
+        # surface.mutable()
+
+    def visitLayer(self, layer: acts.Layer):
+        # print(layer)
+        pass
+
+    def visitVolume(self, volume: acts.Volume):
+        # print(volume, volume.address)
+        pass
+
+    def visitPortal(self, portal: acts.Portal):
+        # print(portal)
+        pass
+
+
 if "__main__" == __name__:
     # detector = AlignedDetector()
-    # detector = GenericDetector()
-    detector = getOpenDataDetector()
+    detector = GenericDetector()
+    # detector = getOpenDataDetector()
     trackingGeometry = detector.trackingGeometry()
     decorators = detector.contextDecorators()
 
-    runGeometry(trackingGeometry, decorators, outputDir=os.getcwd())
+    act = ""
+    visitor = Visitor()
+    before = visitor.num_surfaces
+    trackingGeometry.apply(visitor)
+
+    act += visitor.string
+    act += f"BEFORE {before}\n"
+    act += f"AFTER {visitor.num_surfaces}\n"
+    act += "done"
+
+    from pathlib import Path
+    import difflib
+    import sys
+
+    # print(act)
+    # sys.exit()
+
+    # exp = (Path.cwd() / "original.txt").read_text()
+
+    # if act == exp:
+    #     print("ALL GOOD")
+    # else:
+    #     print("BAD")
+    #     exp = exp.splitlines(keepends=True)
+    #     act = act.splitlines(keepends=True)
+    #     exp = exp[:50]
+    #     act = act[:50]
+    #     sys.stdout.writelines(difflib.unified_diff(exp, act))
+
+    #
+    # runGeometry(trackingGeometry, decorators, outputDir=os.getcwd())
 
     # Uncomment if you want to create the geometry id mapping for DD4hep
     # dd4hepIdGeoIdMap = acts.examples.dd4hep.createDD4hepIdGeoIdMap(trackingGeometry)
