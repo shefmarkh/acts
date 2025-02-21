@@ -551,24 +551,67 @@ if __name__ == "__main__":
 
     # acts.svg.drawTrackingGeometry(trackingGeometry)
 
-    objects = {}
+    print("Drawing svg")
+    objects_xy = {}
+    objects_zr = {}
+    portals = []
 
-    @trackingGeometry.visitSurfaces
-    def visit(surface: acts.Surface):
-        gid = surface.geometryId
-        if gid.sensitive == 0:
-            return
-        proto_surface = acts.svg.convertSurface(
-            gctx, surface, acts.svg.SurfaceOptions()
-        )
-        object = acts.svg.viewSurface(proto_surface, "identification", "xy")
-        key = (gid.volume, gid.layer)
-        objects.setdefault(key, [])
-        objects[key].append(object)
+    class Visitor(acts.TrackingGeometryMutableVisitor):
+        def visitSurface(self, surface: acts.Surface):
+            gid = surface.geometryId
+            if gid.sensitive == 0:
+                return
+            proto_surface = acts.svg.convertSurface(
+                gctx, surface, acts.svg.SurfaceOptions()
+            )
+            object_xy = acts.svg.viewSurface(proto_surface, "identification", "xy")
+            object_rz = acts.svg.viewSurface(proto_surface, "identification", "zr")
+            # key = (gid.volume, gid.layer)
+            key = gid.volume
+            objects_xy.setdefault(key, [])
+            objects_xy[key].append(object_xy)
+            objects_zr.setdefault(key, [])
+            objects_zr[key].append(object_rz)
 
-    for key, surfaces in objects.items():
-        volume, layer = key
-        acts.svg.toFile(surfaces, f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
+        def visitPortal(self, portal: acts.Portal):
+            portal_surface = portal.surface
+            gid = portal_surface.geometryId
+            proto_portal = acts.svg.convertSurface(
+                gctx, portal_surface, acts.svg.SurfaceOptions()
+            )
+            portals.append(proto_portal)
+
+    trackingGeometry.apply(Visitor())
+
+    svg_out = out / "svg"
+    svg_out.mkdir(exist_ok=True)
+
+    for objects, proj_out in [
+        (objects_xy, svg_out / "xy"),
+        (objects_zr, svg_out / "zr"),
+    ]:
+        proj_out.mkdir(exist_ok=True)
+        for key, surfaces in objects.items():
+
+            acts.svg.toFile(surfaces, str(proj_out / f"sensitives_vol{key:>02d}.svg"))
+            # volume, layer = key
+            # acts.svg.toFile(
+            #     surfaces, str(proj_out / f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
+            # )
+
+    portals_xy = [
+        acts.svg.viewSurface(portal, "identification", "xy") for portal in portals
+    ]
+    portals_zr = [
+        acts.svg.viewSurface(portal, "identification", "zr") for portal in portals
+    ]
+
+    portal_out = svg_out / f"portals"
+    portal_out.mkdir(exist_ok=True)
+    (portal_out / "xy").mkdir(exist_ok=True)
+    (portal_out / "zr").mkdir(exist_ok=True)
+    acts.svg.toFile(portals_xy, str(portal_out / "xy" / f"portals.svg"))
+    acts.svg.toFile(portals_zr, str(portal_out / "zr" / f"portals.svg"))
 
     # print("Go pseudo navigation")
     # acts.pseudoNavigation(
