@@ -257,6 +257,16 @@ void addGeometry(Context& ctx) {
   }
 
   {
+    auto portal = py::class_<Acts::Portal>(m, "Portal")
+                      .def_property_readonly("valid", &Acts::Portal::isValid)
+                      .def_property_readonly(
+                          "surface",
+                          [](const Acts::Portal& self) -> const Acts::Surface& {
+                            return self.surface();
+                          });
+  }
+
+  {
     py::class_<Acts::VolumeBounds, std::shared_ptr<Acts::VolumeBounds>>(
         m, "VolumeBounds")
         .def("type", &Acts::VolumeBounds::type)
@@ -449,7 +459,7 @@ void addExperimentalGeometry(Context& ctx) {
 
   // Portal definition
   py::class_<Experimental::Portal, std::shared_ptr<Experimental::Portal>>(
-      m, "Portal");
+      m, "Gen2Portal");
 
   {
     // The surface hierarchy map
