@@ -96,7 +96,10 @@ def build_itk_gen3(
 
     detector_elements = []
 
-    layers = {"PIXEL": {}, "STRIP": {}}
+    layers: dict[str, dict[tuple[int, int, int], list[acts.Surface]]] = {
+        "PIXEL": {},
+        "STRIP": {},
+    }
 
     for cache, hardware in zip([cachePixel, cacheStrip], ["PIXEL", "STRIP"]):
         # gmSurfaces = [ss[1] for ss in cache.sensitiveSurfaces]
@@ -203,7 +206,7 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                             ),
                         )
 
-                        sensors = sum(
+                        sensors: list[acts.Surface] = sum(
                             [
                                 lay
                                 for (bec, ld, _), lay in layers.items()
@@ -581,45 +584,51 @@ if __name__ == "__main__":
             )
             portals.append(proto_portal)
 
-    trackingGeometry.apply(Visitor())
+    if False:
+        trackingGeometry.apply(Visitor())
 
-    svg_out = out / "svg"
-    svg_out.mkdir(exist_ok=True)
+        svg_out = out / "svg"
+        svg_out.mkdir(exist_ok=True)
 
-    for objects, proj_out in [
-        (objects_xy, svg_out / "xy"),
-        (objects_zr, svg_out / "zr"),
-    ]:
-        proj_out.mkdir(exist_ok=True)
-        for key, surfaces in objects.items():
+        for objects, proj_out in [
+            (objects_xy, svg_out / "xy"),
+            (objects_zr, svg_out / "zr"),
+        ]:
+            proj_out.mkdir(exist_ok=True)
+            for key, surfaces in objects.items():
 
-            acts.svg.toFile(surfaces, str(proj_out / f"sensitives_vol{key:>02d}.svg"))
-            # volume, layer = key
-            # acts.svg.toFile(
-            #     surfaces, str(proj_out / f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
-            # )
+                acts.svg.toFile(
+                    surfaces, str(proj_out / f"sensitives_vol{key:>02d}.svg")
+                )
+                # volume, layer = key
+                # acts.svg.toFile(
+                #     surfaces, str(proj_out / f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
+                # )
 
-    portals_xy = [
-        acts.svg.viewSurface(portal, "identification", "xy") for portal in portals
-    ]
-    portals_zr = [
-        acts.svg.viewSurface(portal, "identification", "zr") for portal in portals
-    ]
+        portals_xy = [
+            acts.svg.viewSurface(portal, "identification", "xy") for portal in portals
+        ]
+        portals_zr = [
+            acts.svg.viewSurface(portal, "identification", "zr") for portal in portals
+        ]
 
-    portal_out = svg_out / f"portals"
-    portal_out.mkdir(exist_ok=True)
-    (portal_out / "xy").mkdir(exist_ok=True)
-    (portal_out / "zr").mkdir(exist_ok=True)
-    acts.svg.toFile(portals_xy, str(portal_out / "xy" / f"portals.svg"))
-    acts.svg.toFile(portals_zr, str(portal_out / "zr" / f"portals.svg"))
+        portal_out = svg_out / f"portals"
+        portal_out.mkdir(exist_ok=True)
+        (portal_out / "xy").mkdir(exist_ok=True)
+        (portal_out / "zr").mkdir(exist_ok=True)
+        acts.svg.toFile(portals_xy, str(portal_out / "xy" / f"portals.svg"))
+        acts.svg.toFile(portals_zr, str(portal_out / "zr" / f"portals.svg"))
 
-    # print("Go pseudo navigation")
-    # acts.pseudoNavigation(
-    #     trackingGeometry,
-    #     gctx,
-    #     out / "pseudo.csv",
-    #     runs=10000,
-    #     etaRange=(-4.5, 4.5),
-    #     substepsPerCm=2,
-    #     logLevel=acts.logging.INFO,
-    # )
+        # print("Go pseudo navigation")
+        # acts.pseudoNavigation(
+        #     trackingGeometry,
+        #     gctx,
+        #     out / "pseudo.csv",
+        #     runs=10000,
+        #     etaRange=(-4.5, 4.5),
+        #     substepsPerCm=2,
+        #     logLevel=acts.logging.INFO,
+        # )
+
+    zrRange = acts.Extent(acts.ExtentEnvelope(phi=[-0.1, 0.1]))
+    acts.svg.drawTrackingGeometry(gctx, trackingGeometry, zrRange)
