@@ -33,8 +33,8 @@ def draw(out: Path | None, surfaces, name="debug"):
 
 mat_binning = (
     cylFace.OuterCylinder,
-    acts.ProtoBinning(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
-    acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+    acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+    acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
 )
 
 
@@ -156,8 +156,8 @@ def build_itk_gen3(
         with itk.Material("BeamPipe_Material") as mat:
             mat.configureFace(
                 cylFace.OuterCylinder,
-                acts.ProtoBinning(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
-                acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+                acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+                acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
             )
             mat.addStaticVolume(
                 base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
@@ -198,10 +198,10 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                                 if i == 0
                                 else cylFace.InnerCylinder
                             ),
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40
                             ),
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                             ),
                         )
@@ -254,12 +254,12 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                         lwrap = ec.Material(f"InnerPixel_{s}EC_{i}_Material")
                         lwrap.configureFace(
                             (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisR,
                                 bType=bdt.Bound,
                                 nbins=20,
                             ),
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisPhi,
                                 bType=bdt.Bound,
                                 nbins=40,
@@ -303,10 +303,10 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                     ) as mat:
                         mat.configureFace(
                             cylFace.InnerCylinder,
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20
                             ),
-                            acts.ProtoBinning(
+                            acts.ProtoAxis(
                                 bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                             ),
                         )
@@ -327,12 +327,12 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
                     outer_pixel_ec_mat.configureFace(
                         (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                        acts.ProtoBinning(
+                        acts.ProtoAxis(
                             bValue=aDir.AxisR,
                             bType=bdt.Bound,
                             nbins=20,
                         ),
-                        acts.ProtoBinning(
+                        acts.ProtoAxis(
                             bValue=aDir.AxisPhi,
                             bType=bdt.Bound,
                             nbins=40,
@@ -392,12 +392,12 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
                                     lwrap.configureFace(
                                         face,
-                                        acts.ProtoBinning(
+                                        acts.ProtoAxis(
                                             bValue=aDir.AxisR,
                                             bType=bdt.Bound,
                                             nbins=20,
                                         ),
-                                        acts.ProtoBinning(
+                                        acts.ProtoAxis(
                                             bValue=aDir.AxisPhi,
                                             bType=bdt.Bound,
                                             nbins=40,
@@ -435,8 +435,8 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                 lwrap = strip_brl.Material(f"Strip_Brl_{i}_Material")
                 lwrap.configureFace(
                     cylFace.InnerCylinder,
-                    acts.ProtoBinning(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40),
-                    acts.ProtoBinning(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+                    acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40),
+                    acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
                 )
 
                 with lwrap.Layer(f"Strip_Brl_{i}") as layer:
@@ -486,12 +486,12 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                     lwrap = ec.Material(f"Strip_{s}EC_{i}_Material")
                     lwrap.configureFace(
                         (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                        acts.ProtoBinning(
+                        acts.ProtoAxis(
                             bValue=aDir.AxisR,
                             bType=bdt.Bound,
                             nbins=20,
                         ),
-                        acts.ProtoBinning(
+                        acts.ProtoAxis(
                             bValue=aDir.AxisPhi,
                             bType=bdt.Bound,
                             nbins=40,
