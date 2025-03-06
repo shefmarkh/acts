@@ -28,7 +28,7 @@ def draw(out: Path | None, surfaces, name="debug"):
     for surface in surfaces:
         surface.visualize(vis, gctx, acts.ViewConfig())
 
-    vis.write(out / f"{name}.obj")
+    # vis.write(out / f"{name}.obj")
 
 
 mat_binning = [
@@ -540,11 +540,38 @@ if __name__ == "__main__":
         gctx, out, logLevel=acts.logging.VERBOSE
     )
     vis = acts.ObjVisualization3D()
-    trackingGeometry.visualize(vis, gctx, acts.ViewConfig())
+    trackingGeometry.visualize(
+        vis,
+        gctx,
+        viewConfig=acts.ViewConfig(visible=False),
+        portalViewConfig=acts.ViewConfig(visible=False),
+        sensitiveViewConfig=acts.ViewConfig(visible=True),
+    )
 
     materialSurfaces = trackingGeometry.extractMaterialSurfaces()
 
     vis.write(out / "itk.obj")
+
+    # acts.svg.drawTrackingGeometry(trackingGeometry)
+
+    objects = {}
+
+    @trackingGeometry.visitSurfaces
+    def visit(surface: acts.Surface):
+        gid = surface.geometryId
+        if gid.sensitive == 0:
+            return
+        proto_surface = acts.svg.convertSurface(
+            gctx, surface, acts.svg.SurfaceOptions()
+        )
+        object = acts.svg.viewSurface(proto_surface, "identification", "xy")
+        key = (gid.volume, gid.layer)
+        objects.setdefault(key, [])
+        objects[key].append(object)
+
+    for key, surfaces in objects.items():
+        volume, layer = key
+        acts.svg.toFile(surfaces, f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
 
     # print("Go pseudo navigation")
     # acts.pseudoNavigation(
