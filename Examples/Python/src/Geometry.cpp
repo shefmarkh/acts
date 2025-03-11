@@ -273,7 +273,19 @@ void addGeometry(Context& ctx) {
             .def(py::init<double, double, double, double, double, double,
                           double>(),
                  "rmin"_a, "rmax"_a, "halfz"_a, "halfphi"_a = std::numbers::pi,
-                 "avgphi"_a = 0., "bevelMinZ"_a = 0., "bevelMaxZ"_a = 0.);
+                 "avgphi"_a = 0., "bevelMinZ"_a = 0., "bevelMaxZ"_a = 0.)
+            .def("get", &Acts::CylinderVolumeBounds::get);
+
+    py::enum_<CylinderVolumeBounds::BoundValues>(cvb, "BoundValues")
+        .value("eMinR", CylinderVolumeBounds::BoundValues::eMinR)
+        .value("eMaxR", CylinderVolumeBounds::BoundValues::eMaxR)
+        .value("eHalfLengthZ", CylinderVolumeBounds::BoundValues::eHalfLengthZ)
+        .value("eHalfPhiSector",
+               CylinderVolumeBounds::BoundValues::eHalfPhiSector)
+        .value("eAveragePhi", CylinderVolumeBounds::BoundValues::eAveragePhi)
+        .value("eBevelMinZ", CylinderVolumeBounds::BoundValues::eBevelMinZ)
+        .value("eBevelMaxZ", CylinderVolumeBounds::BoundValues::eBevelMaxZ)
+        .export_values();
 
     py::enum_<CylinderVolumeBounds::Face>(cvb, "Face")
         .value("PositiveDisc", CylinderVolumeBounds::Face::PositiveDisc)
@@ -291,7 +303,13 @@ void addGeometry(Context& ctx) {
     py::class_<Acts::TrackingVolume, Acts::Volume,
                std::shared_ptr<Acts::TrackingVolume>>(m, "TrackingVolume")
         .def(py::init<const Transform3&, std::shared_ptr<Acts::VolumeBounds>,
-                      std::string>());
+                      std::string>())
+        .def_property_readonly("transform", &Acts::TrackingVolume::transform)
+        .def_property_readonly("center", &Acts::TrackingVolume::center)
+        .def_property_readonly(
+            "volumeBounds",
+            py::overload_cast<>(&Acts::TrackingVolume::volumeBounds,
+                                py::const_));
   }
 
   {
