@@ -2,6 +2,8 @@
 
 from pathlib import Path
 import re
+import math
+from typing import cast
 
 import acts
 
@@ -36,6 +38,24 @@ mat_binning = (
     acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
     acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
 )
+
+
+def compare_cyl_r(a: acts.TrackingVolume, b: acts.TrackingVolume) -> bool:
+    aBounds = cast(acts.CylinderVolumeBounds, a.volumeBounds)
+    bBounds = cast(acts.CylinderVolumeBounds, b.volumeBounds)
+    aMinR = aBounds.get(acts.CylinderVolumeBounds.eMinR)
+    aMaxR = bBounds.get(acts.CylinderVolumeBounds.eMaxR)
+    bMinR = bBounds.get(acts.CylinderVolumeBounds.eMinR)
+    bMaxR = bBounds.get(acts.CylinderVolumeBounds.eMaxR)
+
+    aMidR = aMinR + (aMaxR - aMinR) / 2
+    bMidR = bMinR + (bMaxR - bMinR) / 2
+
+    return aMidR < bMidR
+
+
+def compare_cyl_abs_z(a: acts.TrackingVolume, b: acts.TrackingVolume) -> bool:
+    return abs(a.center[2]) < abs(b.center[2])
 
 
 def cluster_in_z(
@@ -186,7 +206,9 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                 inner_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
                 inner_pixel_brl.resizeStrategy = ResizeStrategy.Gap
 
-                geoId.setAllVolumeIdsTo(5).incrementLayerIds(start=1)
+                geoId.setAllVolumeIdsTo(5).incrementLayerIds(start=1).sortBy(
+                    compare_cyl_r
+                )
 
                 for i in (0, 1):
                     with inner_pixel_brl.Material(
@@ -231,7 +253,7 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
 
                     geoId.setAllVolumeIdsTo(10 + int(bec / 2)).incrementLayerIds(
                         start=1
-                    )
+                    ).sortBy(compare_cyl_abs_z)
 
                     groups = [
                         lay
@@ -284,7 +306,9 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                 outer_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
                 outer_pixel_brl.resizeStrategy = ResizeStrategy.Gap
 
-                geoId.setAllVolumeIdsTo(20).incrementLayerIds(start=1)
+                geoId.setAllVolumeIdsTo(20).incrementLayerIds(start=1).sortBy(
+                    compare_cyl_r
+                )
 
                 for i in (2, 3, 4):
                     sensors = sum(
@@ -352,7 +376,7 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
                             geoId.setAllVolumeIdsTo(
                                 40 + (int(bec / 2) * (idx + 1))
-                            ).incrementLayerIds(start=1)
+                            ).incrementLayerIds(start=1).sortBy(compare_cyl_abs_z)
 
                             if idx == 1:
                                 ec.attachmentStrategy = AttachmentStrategy.Gap
@@ -429,7 +453,7 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
             strip_brl.attachmentStrategy = AttachmentStrategy.Gap
             strip_brl.resizeStrategy = ResizeStrategy.Gap
 
-            geoId.setAllVolumeIdsTo(70).incrementLayerIds(start=1)
+            geoId.setAllVolumeIdsTo(70).incrementLayerIds(start=1).sortBy(compare_cyl_r)
 
             for i in (0, 1, 2, 3):
                 lwrap = strip_brl.Material(f"Strip_Brl_{i}_Material")
@@ -477,7 +501,9 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                 f"Strip_{s}EC", aDir.AxisZ
             ) as ec:
 
-                geoId.setAllVolumeIdsTo(80 + int(bec / 2)).incrementLayerIds(start=1)
+                geoId.setAllVolumeIdsTo(80 + int(bec / 2)).incrementLayerIds(
+                    start=1
+                ).sortBy(compare_cyl_abs_z)
 
                 ec.attachmentStrategy = AttachmentStrategy.Gap
                 ec.resizeStrategy = ResizeStrategy.Gap
