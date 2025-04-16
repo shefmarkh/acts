@@ -35,8 +35,8 @@ def draw(out: Path | None, surfaces, name="debug"):
 
 mat_binning = (
     cylFace.OuterCylinder,
-    acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
-    acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+    acts.DirectedProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+    acts.DirectedProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
 )
 
 
@@ -176,8 +176,8 @@ def build_itk_gen3(
         with itk.Material("BeamPipe_Material") as mat:
             mat.configureFace(
                 cylFace.OuterCylinder,
-                acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
-                acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+                acts.DirectedProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+                acts.DirectedProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
             )
             mat.addStaticVolume(
                 base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
@@ -204,7 +204,10 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                 "InnerPixel_Brl", aDir.AxisR
             ) as inner_pixel_brl:
                 inner_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
-                inner_pixel_brl.resizeStrategy = ResizeStrategy.Gap
+                inner_pixel_brl.resizeStrategies = (
+                    ResizeStrategy.Gap,
+                    ResizeStrategy.Gap,
+                )
 
                 geoId.setAllVolumeIdsTo(5).incrementLayerIds(start=1).sortBy(
                     compare_cyl_r
@@ -220,10 +223,10 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                                 if i == 0
                                 else cylFace.InnerCylinder
                             ),
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40
                             ),
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                             ),
                         )
@@ -249,7 +252,7 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                     f"InnerPixel_{s}EC", aDir.AxisZ
                 ) as ec:
                     ec.attachmentStrategy = AttachmentStrategy.Gap
-                    ec.resizeStrategy = ResizeStrategy.Gap
+                    ec.resizeStrategies = (ResizeStrategy.Gap, ResizeStrategy.Gap)
 
                     geoId.setAllVolumeIdsTo(10 + int(bec / 2)).incrementLayerIds(
                         start=1
@@ -276,12 +279,12 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                         lwrap = ec.Material(f"InnerPixel_{s}EC_{i}_Material")
                         lwrap.configureFace(
                             (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisR,
                                 bType=bdt.Bound,
                                 nbins=20,
                             ),
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisPhi,
                                 bType=bdt.Bound,
                                 nbins=40,
@@ -304,7 +307,10 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                 "OuterPixel_Brl", aDir.AxisR
             ) as outer_pixel_brl:
                 outer_pixel_brl.attachmentStrategy = AttachmentStrategy.Gap
-                outer_pixel_brl.resizeStrategy = ResizeStrategy.Gap
+                outer_pixel_brl.resizeStrategies = (
+                    ResizeStrategy.Gap,
+                    ResizeStrategy.Gap,
+                )
 
                 geoId.setAllVolumeIdsTo(20).incrementLayerIds(start=1).sortBy(
                     compare_cyl_r
@@ -327,10 +333,10 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
                     ) as mat:
                         mat.configureFace(
                             cylFace.InnerCylinder,
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20
                             ),
-                            acts.ProtoAxis(
+                            acts.DirectedProtoAxis(
                                 bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
                             ),
                         )
@@ -351,12 +357,12 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
                     outer_pixel_ec_mat.configureFace(
                         (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                        acts.ProtoAxis(
+                        acts.DirectedProtoAxis(
                             bValue=aDir.AxisR,
                             bType=bdt.Bound,
                             nbins=20,
                         ),
-                        acts.ProtoAxis(
+                        acts.DirectedProtoAxis(
                             bValue=aDir.AxisPhi,
                             bType=bdt.Bound,
                             nbins=40,
@@ -416,12 +422,12 @@ def build_outer_pixel(layers, out, itk: acts.BlueprintNode):
 
                                     lwrap.configureFace(
                                         face,
-                                        acts.ProtoAxis(
+                                        acts.DirectedProtoAxis(
                                             bValue=aDir.AxisR,
                                             bType=bdt.Bound,
                                             nbins=20,
                                         ),
-                                        acts.ProtoAxis(
+                                        acts.DirectedProtoAxis(
                                             bValue=aDir.AxisPhi,
                                             bType=bdt.Bound,
                                             nbins=40,
@@ -451,7 +457,7 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
         ) as strip_brl:
 
             strip_brl.attachmentStrategy = AttachmentStrategy.Gap
-            strip_brl.resizeStrategy = ResizeStrategy.Gap
+            strip_brl.resizeStrategies = (ResizeStrategy.Gap, ResizeStrategy.Gap)
 
             geoId.setAllVolumeIdsTo(70).incrementLayerIds(start=1).sortBy(compare_cyl_r)
 
@@ -459,8 +465,12 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                 lwrap = strip_brl.Material(f"Strip_Brl_{i}_Material")
                 lwrap.configureFace(
                     cylFace.InnerCylinder,
-                    acts.ProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40),
-                    acts.ProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+                    acts.DirectedProtoAxis(
+                        bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=40
+                    ),
+                    acts.DirectedProtoAxis(
+                        bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20
+                    ),
                 )
 
                 with lwrap.Layer(f"Strip_Brl_{i}") as layer:
@@ -506,18 +516,18 @@ def build_strip(layers, out, itk: acts.BlueprintNode):
                 ).sortBy(compare_cyl_abs_z)
 
                 ec.attachmentStrategy = AttachmentStrategy.Gap
-                ec.resizeStrategy = ResizeStrategy.Gap
+                ec.resizeStrategies = (ResizeStrategy.Gap, ResizeStrategy.Gap)
 
                 for i in range(0, 5 + 1):
                     lwrap = ec.Material(f"Strip_{s}EC_{i}_Material")
                     lwrap.configureFace(
                         (cylFace.NegativeDisc if bec > 0 else cylFace.PositiveDisc),
-                        acts.ProtoAxis(
+                        acts.DirectedProtoAxis(
                             bValue=aDir.AxisR,
                             bType=bdt.Bound,
                             nbins=20,
                         ),
-                        acts.ProtoAxis(
+                        acts.DirectedProtoAxis(
                             bValue=aDir.AxisPhi,
                             bType=bdt.Bound,
                             nbins=40,
@@ -657,4 +667,4 @@ if __name__ == "__main__":
         # )
 
     zrRange = acts.Extent(acts.ExtentEnvelope(phi=[-0.1, 0.1]))
-    acts.svg.drawTrackingGeometry(gctx, trackingGeometry, zrRange)
+    acts.svg.drawTrackingGeometry(gctx, trackingGeometry, "zr")
