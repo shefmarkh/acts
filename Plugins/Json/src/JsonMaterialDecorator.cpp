@@ -30,7 +30,7 @@ JsonMaterialDecorator::JsonMaterialDecorator(
   nlohmann::json jin;
 
   if (jFileName.find(".cbor") != std::string::npos) {
-    std::vector<std::uint8_t> iCbor((std::istreambuf_iterator<char>(ifj)),
+    std::vector<char> iCbor((std::istreambuf_iterator<char>(ifj)),
                                     std::istreambuf_iterator<char>());
     jin = nlohmann::json::from_cbor(iCbor);
   } else {

@@ -11,7 +11,7 @@ mm = acts.UnitConstants.mm
 m = acts.UnitConstants.m
 gm = acts.geomodel
 
-geo_base = Path("/Users/pagessin/cernbox/ITkGeometry")
+geo_base = Path("/Users/markhodgkinson/run_acts_April2025")
 strip_database = geo_base / "ITkStrips.db"
 pixel_database = geo_base / "ITkPixels.db"
 

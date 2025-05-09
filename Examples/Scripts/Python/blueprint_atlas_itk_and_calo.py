@@ -11,7 +11,7 @@ mm = acts.UnitConstants.mm
 m = acts.UnitConstants.m
 gm = acts.geomodel
 
-geo_base = Path("/Users/pagessin/cernbox/ITkGeometry")
+geo_base = Path("/Users/markhodgkinson/run_acts_April2025")
 strip_database = geo_base / "ITkStrips.db"
 pixel_database = geo_base / "ITkPixels.db"
 
@@ -69,12 +69,8 @@ def cluster_in_z(
 
     for pl in proto_layers[1:]:
         prev = merged[-1]
-        # print("Comparing:")
-        # print(" - ", prev.zmin, prev.zmax)
-        # print(" - ", cluster.zmin, cluster.zmax)
 
         if (prev.max(aDir.AxisZ) + window) > pl.min(aDir.AxisZ):
-            # print("Overlap", cluster.zmin, prev.zmax)
             merged[-1] = acts.ProtoLayer(gctx, prev.surfaces + pl.surfaces)
 
         else:
@@ -122,14 +118,12 @@ def build_itk_gen3(
     }
 
     for cache, hardware in zip([cachePixel, cacheStrip], ["PIXEL", "STRIP"]):
-        # gmSurfaces = [ss[1] for ss in cache.sensitiveSurfaces]
         gmDetElements = [ss[0] for ss in cache.sensitiveSurfaces]
         detector_elements.extend(gmDetElements)
 
         for surfaceIdx in range(len(gmDetElements)):
             detEl = gmDetElements[surfaceIdx]
-            # print(detEl)
-            # print(f"Element {detEl.databaseEntryName()}")
+
             match = pattern[hardware].match(detEl.databaseEntryName())
             if not match:
                 print(f"Could not match {detEl.databaseEntryName()}")
@@ -144,25 +138,13 @@ def build_itk_gen3(
             if surfaceIdx < 10:
                 print(barrel_endcap, layer_wheel, eta, phi_module, side)
 
-            # if hardware == "PIXEL" and barrel_endcap != 0:
+
             key = (barrel_endcap, layer_wheel, eta)
-            # else:
-            #     key = (barrel_endcap, layer_wheel)
 
             layers[hardware].setdefault(key, [])
             layers[hardware][key].append(detEl.surface())
 
     print("Done")
-
-    # for key, surfaces in layers["STRIP"].items():
-    #     print(key, len(surfaces))
-    #     draw(surfaces, f"STRIP_{key}")
-    #
-    # for key, surfaces in layers["PIXEL"].items():
-    #     print(key, len(surfaces))
-    #     draw(surfaces, f"PIXEL_{key}")
-
-    # sys.exit()
 
     root = acts.Blueprint(
         envelope=acts.ExtentEnvelope(r=[10 * mm, 10 * mm], z=[10 * mm, 10 * mm])
@@ -271,7 +253,6 @@ def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
                         proto_layers.reverse()
 
                     print("have", len(proto_layers), "proto layers")
-                    # print([(cluster.zmin, cluster.zmax) for cluster in clusters])
 
                     for i, pl in enumerate(proto_layers):
                         draw(out, pl.surfaces, f"InnerPixel_{s}EC_{i}")
@@ -588,8 +569,6 @@ if __name__ == "__main__":
 
     vis.write(out / "itk.obj")
 
-    # acts.svg.drawTrackingGeometry(trackingGeometry)
-
     print("Drawing svg")
     objects_xy = {}
     objects_zr = {}
@@ -619,52 +598,6 @@ if __name__ == "__main__":
                 gctx, portal_surface, acts.svg.SurfaceOptions()
             )
             portals.append(proto_portal)
-
-    if False:
-        trackingGeometry.apply(Visitor())
-
-        svg_out = out / "svg"
-        svg_out.mkdir(exist_ok=True)
-
-        for objects, proj_out in [
-            (objects_xy, svg_out / "xy"),
-            (objects_zr, svg_out / "zr"),
-        ]:
-            proj_out.mkdir(exist_ok=True)
-            for key, surfaces in objects.items():
-
-                acts.svg.toFile(
-                    surfaces, str(proj_out / f"sensitives_vol{key:>02d}.svg")
-                )
-                # volume, layer = key
-                # acts.svg.toFile(
-                #     surfaces, str(proj_out / f"sensitives_vol{volume:>02d}_lay{layer:>02d}.svg")
-                # )
-
-        portals_xy = [
-            acts.svg.viewSurface(portal, "identification", "xy") for portal in portals
-        ]
-        portals_zr = [
-            acts.svg.viewSurface(portal, "identification", "zr") for portal in portals
-        ]
-
-        portal_out = svg_out / f"portals"
-        portal_out.mkdir(exist_ok=True)
-        (portal_out / "xy").mkdir(exist_ok=True)
-        (portal_out / "zr").mkdir(exist_ok=True)
-        acts.svg.toFile(portals_xy, str(portal_out / "xy" / f"portals.svg"))
-        acts.svg.toFile(portals_zr, str(portal_out / "zr" / f"portals.svg"))
-
-        # print("Go pseudo navigation")
-        # acts.pseudoNavigation(
-        #     trackingGeometry,
-        #     gctx,
-        #     out / "pseudo.csv",
-        #     runs=10000,
-        #     etaRange=(-4.5, 4.5),
-        #     substepsPerCm=2,
-        #     logLevel=acts.logging.INFO,
-        # )
 
     zrRange = acts.Extent(acts.ExtentEnvelope(phi=[-0.1, 0.1]))
     acts.svg.drawTrackingGeometry(gctx, trackingGeometry, "zr")
