@@ -152,22 +152,19 @@ def build_itk_gen3(
 
     base = acts.Transform3.Identity()
 
-    with root.CylinderContainer("ITk", aDir.AxisR) as itk:
-        itk.attachmentStrategy = acts.VolumeAttachmentStrategy.Second
+    with root.CylinderContainer("ATLAS", aDir.AxisR) as atlas:
+        atlas.attachmentStrategy = acts.VolumeAttachmentStrategy.Second
+        build_beam_pipe(atlas)
+        build_inner_pixel(layers["PIXEL"], out, atlas)
+        build_outer_pixel(layers["PIXEL"], out, atlas)
+        build_strip(layers["STRIP"], out, atlas)
 
-        with itk.Material("BeamPipe_Material") as mat:
-            mat.configureFace(
-                cylFace.OuterCylinder,
-                acts.DirectedProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
-                acts.DirectedProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
-            )
-            mat.addStaticVolume(
-                base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
-            )
+        import json
+        #Json was written by:
+        #https://gitlab.cern.ch/atlas-particleflow-software/athena/-/blob/mhodgkin_ACTSCaloExtrapolation/Reconstruction/eflowRec/src/PFCaloSurfaceBuilderTool.cxx?ref_type=heads#L161
+        CaloDimensions = json.load(open("CalorimeterDimensions.json"))    
 
-        build_inner_pixel(layers["PIXEL"], out, itk)
-        build_outer_pixel(layers["PIXEL"], out, itk)
-        build_strip(layers["STRIP"], out, itk)
+        build_calo_EMBarrel(CaloDimensions, atlas)
 
     if out is not None:
         with open(out / "itk.dot", "w") as fh:
@@ -177,6 +174,25 @@ def build_itk_gen3(
 
     return trackingGeometry, detector_elements
 
+def build_calo_EMBarrel(CaloDimensions, atlas: acts.BlueprintNode):
+    base = acts.Transform3.Identity()
+    with atlas.CylinderContainer("EMB1", aDir.AxisZ) as EMB1:
+            EMB1.addStaticVolume(
+                base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MinR"], CaloDimensions["EMB1MaxR"], CaloDimensions["EMB1HalfLengthZ"]), name="EMB1"
+            )
+
+def build_beam_pipe(itk: acts.BlueprintNode):
+    base = acts.Transform3.Identity()
+    with itk.Material("BeamPipe_Material") as mat:
+        mat.configureFace(
+            cylFace.OuterCylinder,
+            acts.DirectedProtoAxis(bValue=aDir.AxisRPhi, bType=bdt.Bound, nbins=20),
+            acts.DirectedProtoAxis(bValue=aDir.AxisZ, bType=bdt.Bound, nbins=20),
+        )
+        mat.addStaticVolume(
+            # The bounds are rmin,rmax and halfLengthZ
+            base, acts.CylinderVolumeBounds(0, 23 * mm, 3 * m), name="BeamPipe"
+        )
 
 def build_inner_pixel(layers, out, itk: acts.BlueprintNode):
     with itk.Material("InnerPixelMaterial") as node:
