@@ -176,9 +176,21 @@ def build_itk_gen3(
 
 def build_calo_EMBarrel(CaloDimensions, atlas: acts.BlueprintNode):
     base = acts.Transform3.Identity()
+    with atlas.CylinderContainer("PreSamplerB", aDir.AxisZ) as PreSamplerB:
+        PreSamplerB.addStaticVolume(
+            base, acts.CylinderVolumeBounds(CaloDimensions["PreSamplerBMinR"], CaloDimensions["PreSamplerBMaxR"], CaloDimensions["PreSamplerBHalfLengthZ"]), name="PreSamplerB"
+        )
     with atlas.CylinderContainer("EMB1", aDir.AxisZ) as EMB1:
-            EMB1.addStaticVolume(
-                base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MinR"], CaloDimensions["EMB1MaxR"], CaloDimensions["EMB1HalfLengthZ"]), name="EMB1"
+        EMB1.addStaticVolume(
+            base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MinR"], CaloDimensions["EMB1MaxR"], CaloDimensions["EMB1HalfLengthZ"]), name="EMB1"
+        )
+    with atlas.CylinderContainer("EMB2", aDir.AxisZ) as EMB2:
+            EMB2.addStaticVolume(
+                base, acts.CylinderVolumeBounds(CaloDimensions["EMB2MinR"], CaloDimensions["EMB2MaxR"], CaloDimensions["EMB2HalfLengthZ"]), name="EMB2"
+            )
+    with atlas.CylinderContainer("EMB3", aDir.AxisZ) as EMB3:
+            EMB3.addStaticVolume(
+                base, acts.CylinderVolumeBounds(CaloDimensions["EMB3MinR"], CaloDimensions["EMB3MaxR"], CaloDimensions["EMB3HalfLengthZ"]), name="EMB3"
             )
 
 def build_beam_pipe(itk: acts.BlueprintNode):
