@@ -176,34 +176,26 @@ def build_itk_gen3(
 
 def build_calo_EMBarrel(CaloDimensions, atlas: acts.BlueprintNode):
     base = acts.Transform3.Identity()
-    with atlas.CylinderContainer("PreSamplerB", aDir.AxisZ) as PreSamplerB:
-        PreSamplerB.addStaticVolume(
-            base, acts.CylinderVolumeBounds(CaloDimensions["PreSamplerBMinR"], CaloDimensions["PreSamplerBMaxR"], CaloDimensions["PreSamplerBHalfLengthZ"]), name="PreSamplerB"
-        )
-    with atlas.CylinderContainer("EMBarrelGap1", aDir.AxisZ) as EMBarrelGap1:
-        EMBarrelGap1.addStaticVolume(
-            base, acts.CylinderVolumeBounds(CaloDimensions["PreSamplerBMaxR"], CaloDimensions["EMB1MinR"], CaloDimensions["CaloHalfLengthZ"]), name="EMBarrelGap1"
-        )
-    with atlas.CylinderContainer("EMB1", aDir.AxisZ) as EMB1:
-        EMB1.addStaticVolume(
-            base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MinR"], CaloDimensions["EMB1MaxR"], CaloDimensions["EMB1HalfLengthZ"]), name="EMB1"
-        )
-    with atlas.CylinderContainer("EMBarrelGap2", aDir.AxisZ) as EMBarrelGap2:
-        EMBarrelGap2.addStaticVolume(
-            base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MaxR"], CaloDimensions["EMB2MinR"], CaloDimensions["CaloHalfLengthZ"]), name="EMBarrelGap2"
-        )
-    with atlas.CylinderContainer("EMB2", aDir.AxisZ) as EMB2:
-            EMB2.addStaticVolume(
-                base, acts.CylinderVolumeBounds(CaloDimensions["EMB2MinR"], CaloDimensions["EMB2MaxR"], CaloDimensions["EMB2HalfLengthZ"]), name="EMB2"
-            )
-    with atlas.CylinderContainer("EMBarrelGap3", aDir.AxisZ) as EMBarrelGap3:
-        EMBarrelGap3.addStaticVolume(
-            base, acts.CylinderVolumeBounds(CaloDimensions["EMB2MaxR"], CaloDimensions["EMB3MinR"], CaloDimensions["CaloHalfLengthZ"]), name="EMBarrelGap3"
-        )
-    with atlas.CylinderContainer("EMB3", aDir.AxisZ) as EMB3:
-            EMB3.addStaticVolume(
-                base, acts.CylinderVolumeBounds(CaloDimensions["EMB3MinR"], CaloDimensions["EMB3MaxR"], CaloDimensions["EMB3HalfLengthZ"]), name="EMB3"
-            )
+    with atlas.CylinderContainer("Calo", aDir.AxisR) as calo:
+        with calo.CylinderContainer("EMBarrel", aDir.AxisZ) as EMBarrel:
+            #Use Gap attachment strategy to fill gaps between layers
+            EMBarrel.attachmentStrategy = acts.VolumeAttachmentStrategy.Third
+            with EMBarrel.CylinderContainer("PreSamplerB", aDir.AxisZ) as PreSamplerB:
+                PreSamplerB.addStaticVolume(
+                    base, acts.CylinderVolumeBounds(CaloDimensions["PreSamplerBMinR"], CaloDimensions["PreSamplerBMaxR"], CaloDimensions["PreSamplerBHalfLengthZ"]), name="PreSamplerB"
+                )   
+            with EMBarrel.CylinderContainer("EMB1", aDir.AxisZ) as EMB1:
+                EMB1.addStaticVolume(
+                    base, acts.CylinderVolumeBounds(CaloDimensions["EMB1MinR"], CaloDimensions["EMB1MaxR"], CaloDimensions["EMB1HalfLengthZ"]), name="EMB1"
+                )
+            with EMBarrel.CylinderContainer("EMB2", aDir.AxisZ) as EMB2:
+                EMB2.addStaticVolume(
+                    base, acts.CylinderVolumeBounds(CaloDimensions["EMB2MinR"], CaloDimensions["EMB2MaxR"], CaloDimensions["EMB2HalfLengthZ"]), name="EMB2"
+                )
+            with EMBarrel.CylinderContainer("EMB3", aDir.AxisZ) as EMB3:
+                EMB3.addStaticVolume(
+                    base, acts.CylinderVolumeBounds(CaloDimensions["EMB3MinR"], CaloDimensions["EMB3MaxR"], CaloDimensions["EMB3HalfLengthZ"]), name="EMB3"
+                )
 
 def build_beam_pipe(itk: acts.BlueprintNode):
     base = acts.Transform3.Identity()
